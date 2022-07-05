@@ -1,0 +1,314 @@
+* { margin: 0; padding: 0; }
+
+html, body, app-node {
+	height: 100%;
+}
+
+/* common */
+button {
+	
+	padding: .6vmax;
+	position: relative;
+	
+}
+button:active {
+	
+	top: .2vmax;
+	
+}
+input[type="text"] {
+	
+	border: none;
+	border-radius: .6vmax;
+	text-align: center;
+	
+}
+input {
+	
+	background: rgba(232,232,232,1);
+	box-sizing: border-box;
+	padding: .6vmax;
+	
+}
+input:focus {
+	
+	background: rgba(255,255,255,1);
+	outline: none;
+	
+}
+
+body {
+	background-color: red;
+	max-height: 100%;
+}
+
+app-node {
+	display: block;
+}
+.app-node {
+	height: 100%;
+}
+
+#data {
+	display: none;
+}
+
+dialog-node {
+	
+	--sprite-width: 20vmax;
+	
+	display: block;
+	height: 100%;
+	width: 100%;
+	
+}
+dialog-node [slot="dialog"] {
+	display: block;
+	height: 100%;
+	width: 100%;
+	z-index: 1;
+}
+.dialog-node {
+	
+	display: flex;
+	flex-direction: row-reverse;
+	height: 100%;
+	position: relative;
+	
+}
+.dialog-node display-node {
+	display: flex;
+	height: 100%;
+	position: absolute;
+	width:100%;
+}
+/*.dialog-node display-node sprite-node [slot="sprite"] {
+	
+	--size: var(--sprite-width);
+	
+	background: no-repeat 60% 8%/300% auto url("sample-icon.png");
+	border-radius: .4vmax;
+	height: 100%;
+	position: absolute;
+	left: calc(100% - var(--size));
+	width: var(--size);
+	
+}*/
+.dialog-node measure-box {
+	
+	display: block;
+	height: 100%;
+	width: 100%;
+	
+}
+.dialog-node display-node measure-box sprite-node [slot="sprite"] {
+	
+	/*--position-source-x-unit: -2250px;
+	--position-source-y-unit: -10000px;
+	--position-source-x: -2250;
+	--position-source-y: -10000;*/
+	--x-coefficient: calc(var(--sprite-size-width) / var(--img-sample-icon-width));
+	--y-coefficient: calc(var(--sprite-size-height) / var(--img-sample-icon-height));
+	
+	--horizontal-w: clamp(400px, calc((var(--img-sample-icon-width) * var(--x-coefficient)) * (3px * var(--x-coefficient))), 600px);
+	--horizontal-h: calc(var(--horizontal-w) * var(--img-sample-icon-height) / var(--img-sample-icon-width));
+	/*--vertical-w: min(calc((var(--img-sample-icon-width) * var(--y-coefficient)) * (3px * var(--x-coefficient))), 600px);
+	--vertical-h: calc(var(--vertical-w) * var(--img-sample-icon-height) / var(--img-sample-icon-width));
+	--w: max(calc(var(--horizontal-w) * var(--sprite-horizontal)), calc(var(--vertical-w) * var(--sprite-vertical)));
+	--h: max(calc(var(--horizontal-h) * var(--sprite-horizontal)), calc(var(--vertical-h) * var(--sprite-vertical)));*/
+	--w: var(--horizontal-w);
+	--h: var(--horizontal-h);
+	--x: calc((var(--w) * var(--position-source-x) - var(--sprite-size-width-unit) / 2) * -1);
+	--y: calc((var(--h) * var(--position-source-y) - var(--sprite-size-height-unit) / 2) * -1);
+	
+	--ratio: calc(var(--measured-width) / var(--img-sample-icon-width));
+	--box-width: calc(300px * var(--measured-width) / var(--img-sample-icon-width));
+	
+	background:	linear-gradient(transparent 50%, red 50.1%, red 51%, transparent 51.1%),
+					no-repeat var(--x) var(--y)/var(--w) var(--h) var(--bg-url);
+	height: 100%;
+	left: var(--measured-x);
+	position: absolute;
+	top: 0;
+	width: var(--measured-width);
+	
+}
+.dialog-node display-node measure-box sprite-node [slot="sprite"].character-heat {
+	
+	--position-source-x: .5;
+	--position-source-y: .2;
+	--bg-url: url("sample-icon.png");
+	
+}
+.dialog-node display-node measure-box sprite-node [slot="sprite"].character-17 {
+	
+	--position-source-x: .5;
+	--position-source-y: .4;
+	--bg-url: url("sample-icon-1.png");
+	
+}
+
+#resouces {
+	display: none;
+}
+
+#logs {
+	background: rgba(0,0,0,1);
+	display: flex;
+	height: 40%;
+	width: 100%;
+}
+.logs-node {
+	align-items: flex-end;
+	display: flex;
+	flex-direction: row-reverse;
+	flex-wrap: nowrap;
+	height: 100%;
+	margin-right: 10%;
+	overflow-x: auto;
+}
+.logs-container {
+	border-radius: .4vmax;
+	background: rgba(255,255,255,1);
+	display: flex;
+	margin: .5vmax;
+	padding: 1vmax;
+}
+
+log-node {
+	min-width: 200px;
+}
+
+consoles-node {
+	align-items: center;
+	background-color: gray;
+	display: flex;
+	height: 20%;
+	justify-content: center;
+}
+.consoles-node {
+	display: flex;
+	width: 100%;
+}
+console-node {
+	display: flex;
+	width: 100%;
+}
+.console-node {
+	display: flex;
+	width: 100%;
+}
+#input-node {
+	
+	align-items: center;
+	box-sizing: border-box;
+	display: flex;
+	flex: 1 0 auto;
+	padding: .6vmax;
+	
+}
+#inputform {
+	
+	font-size: 1.2rem;
+	width: 100%;
+	
+}
+#control-node {
+	align-items: center;
+	box-sizing: border-box;
+	display: flex;
+	padding: .6vmax;
+}
+
+browser-node {
+	background-color: black;
+	display: block;
+	height: 40%;
+}
+.browser-node {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+browser-tabs {
+	display: flex;
+}
+browser-tab {
+	
+	color: rgba(255,255,255,1);
+	display: flex;
+	padding: .2vmax .5vmax;
+	
+}
+browser-tab.shown {
+	background-color: rgba(144,144,144,1);
+}
+.browser-tab {
+	
+	align-items: center;
+	display: flex;
+	
+}
+
+#view {
+	flex: 1 0 auto;
+}
+.tab-content {
+	display: none;
+}
+.tab-content.shown {
+	display: block;
+}
+[slot="view"] {
+	height: var(--content-height);
+	/*
+		iframe を包括する場合、高さを合わせても由来を特定できないスペースが生まれ、それが意図しないスクロールバーを発生させることがある。
+		そのため、overflow: hidden; を設定して、その特定できないスペースを包括要素内に隠蔽している。
+	*/
+	overflow: hidden;
+}
+[slot="view"] iframe {
+	border: none;
+	height: var(--content-height);
+	width: 100%;
+}
+
+delete-node {
+	
+	--icon-size: 1.5vmax;
+	--icon-center: 50%;
+	--icon-line-angle: 0deg;
+	--icon-line-width: 10%;
+	--icon-line-width-half: calc(var(--icon-line-width) / 2);
+	--icon-line-begin: calc(var(--icon-center) - var(--icon-line-width-half));
+	--icon-line-end: calc(var(--icon-center) + var(--icon-line-width-half));
+	--icon-line-aa: 0%;
+	--icon-line-steps:	transparent calc(var(--icon-line-begin) - var(--icon-line-aa)),
+								var(--icon-color) var(--icon-line-begin),
+								var(--icon-color) var(--icon-line-end),
+								transparent calc(var(--icon-line-end) + var(--icon-line-aa));
+	--icon-color: rgba(255,255,255,1);
+	
+	align-items: center;
+	background: rgba(0,0,0, .4);
+	color: rgba(255,255,255,1);
+	display: flex;
+	height: var(--icon-size);
+	justify-content: center;
+	width: var(--icon-size);
+	
+}
+delete-node::before {
+	
+	--size: 75%;
+	
+	background:	linear-gradient(var(--icon-line-angle), var(--icon-line-steps)),
+					linear-gradient(calc(var(--icon-line-angle) - 90deg), var(--icon-line-steps));
+	content: "";
+	display: block;
+	height: var(--size);
+	transform: rotate(45deg);
+	width: var(--size);
+	
+}

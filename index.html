@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+	<head>
+		<meta chatset="utf-8">
+		<title>Game</title>
+		<link rel="stylesheet" href="default.css">
+		<script src="utils.js"></script>
+		<script type="module" src="main.js"></script>
+	</head>
+	<body>
+		
+		<template id="character-heat">
+			<meta-data id="metadata" slot="metadata">
+				<meta-datum data-name="name">ヒート</meta-datum>
+				<meta-datum data-name="sex">Female</meta-datum>
+				<meta-datum data-name="age" data-type="number">22</meta-datum>
+			</meta-data>
+			<section id="resources">
+				<img id="sample-icon" src="sample-icon.png" loading"lazy"></img>
+			</section>
+			<section id="conditions" slot="conditions">
+				<condition-node>
+					<condition-evaluation data-type="input" data-value-type="regexp" data-condition="equal">^\s*$</condition-evaluation>
+					<condition-true data-name="dialogs" data-type="query-selector-all">#dialogs .d-0</condition-true>
+					<condition-false data-name="dialogs" data-type="query-selector-all">#dialogs .d-0</condition-false>
+				</condition-node>
+			</section>
+			<section id="dialogs" slot="dialogs">
+				<article class="d-0" slot="dialog">
+					<p>　こんにちは、私は$[name]。あなたのパートナー。</p>
+				</article>
+			</section>
+		</template>
+		
+		<template id="script-prologue-0" data-css="default.css">
+			<article slot="script">
+				
+				<condition-node state="input-standby">
+					<condition-evaluation data-type="input" data-value-type="regexp" data-condition="equal">^\s*$</condition-evaluation>
+					<condition-true data-name="dialogs" data-type="query-selector-all">#dialogs .d-0</condition-true>
+					<condition-false data-name="dialogs" data-type="query-selector-all">#dialogs .d-0</condition-false>
+				</condition-node>
+				
+				<s-p>
+					...
+				</s-p>
+				<s-timeout value="1000"></s-timeout>
+				<s-p>
+					...
+				</s-p>
+				
+			</article>
+		</template>
+		
+		<template id="s-node" data-css="default.css">
+			<slot name="script"></slot>
+		</template>
+		
+		<template id="scripts-prologue-0" data-css="default.css">
+			<s-handle type="input" operation="disable">
+				<s-node content="#script-prologue-0"></s-node>
+			</s-handle>
+		</template>
+		
+		<template id="s-container" data-css="default.css">
+			<slot name="scripts"></slot>
+		</template>
+		
+		<template id="scene-prologue-0" data-css="default.css">
+			<article slot="scenario">
+				<s-container content="scripts-prologue-0"></s-container>
+			</article>
+		</template>
+		
+		<template id="scene-node" data-css="default.css">
+			<section id="characters">
+				<slot name="characters"></slot>
+			</section>
+			<slot name="scenario"></slot>
+		</template>
+		
+		<template id="logs-node" data-css="default.css"><div></div></template>
+		<template id="logs-container" data-css="default.css"><div></div></template>
+		<template id="log-node" data-css="default.css">
+			
+			<div><slot name="content"></slot></div>
+			
+		</template>
+		
+		<template id="consoles-node" data-css="default.css">
+			<div>
+				<console-node></console-node>
+			</div>
+		</template>
+		<template id="console-node" data-css="default.css">
+			
+			<div>
+				<div id="input-node">
+					<input id="inputform" type="text" value="">
+				</div>
+				<div id="control-node">
+					<div id="send-node">
+						<button id="send" type="button">送信</button>
+					</div>
+				</div>
+			</div>
+			
+		</template>
+		
+		<template id="browser-node" data-css="default.css">
+			<div>
+				<browser-tabs></browser-tabs>
+				<section id="view">
+					<slot name="view"></slot>
+				</section>
+			</div>
+		</template>
+		<template id="browser-tab" data-css="default.css">
+			<div>
+				<slot name="name"></slot>
+				<delete-node></delete-node>
+			</div>
+		</template>
+		
+		<template id="dialog-node" data-css="default.css">
+			<div>
+				<display-node>
+					<measure-box>
+						<sprite-node><div slot="sprite" class="character-17"></div></sprite-node>
+						<sprite-node><div slot="sprite" class="character-heat"></div></sprite-node>
+					</measure-box>
+				</display-node>
+				<slot name="dialog"></slot>
+			</div>
+		</template>
+		
+		<template id="sprite-node" data-css="default.css">
+			<slot name="sprite"></slot>
+		</template>
+		
+		<template id="scenes-node" data-css="default.css">
+			<div>
+			</div>
+		</template>
+		
+		<template id="character-node" data-css="default.css">
+			<slot name="metadata"></slot>
+			<slot name="conditions"></slot>
+			<slot name="dialogs"></slot>
+		</template>
+		
+		<template id="app-node" data-css="default.css">
+			
+			<div>
+				<!--<resources-node>
+					<resouce-node></resouce-node>
+				</resources-node>
+				<scenes-node>
+					<scene-node></scene-node>
+				</scenes-node>-->
+				<div id="data"></div>
+				<div id="logs">
+					<dialog-node>
+						<div slot="sprite"></div>
+						<logs-node slot="dialog"></logs-node>
+					</dialog-node>
+				</div>
+				<consoles-node></consoles-node>
+				<browser-node></browser-node>
+			</div>
+			
+		</template>
+		
+		<app-node></app-node>
+		
+	</body>
+</html>
