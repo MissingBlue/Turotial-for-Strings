@@ -476,6 +476,14 @@ class ExtensionNode extends HTMLElement {
 	isLineage(element) {
 		return this.isAncestor(element) || this.contains(element);
 	}
+	// https://stackoverflow.com/questions/54520554/custom-element-getrootnode-closest-function-crossing-multiple-parent-shadowd
+	composeClosest(selector, scope = this) {
+		
+		return typeof scope?.closest === 'function' &&
+			(scope.closest(selector) || (scope = scope?.getRootNode?.()?.host) && this.composeClosest(selector, scope)) ||
+				null;
+		
+	}
 	
 	get(...keys) {
 		
@@ -722,6 +730,20 @@ class ExtensionNode extends HTMLElement {
 	};
 	//static movedNodesObserverInit = { childList: true, subtree: true, closest: true };
 	
+	static bind(source, thisArg, ...args) {
+		
+		const bound = {};
+		let k, cb;
+		
+		(thisArg && typeof thisArg === 'object') || (thisArg = bound);
+		
+		if (source && typeof source === 'object' && thisArg && typeof thisArg === 'object')
+			for (k in source) typeof (cb = source[k]) === 'function' && (bound[cb?.name ?? Symbol()] = cb.bind(thisArg, ...args));
+		
+		return bound;
+		
+	}
+	
 }
 
 class CustomElement extends ExtensionNode {
@@ -734,6 +756,16 @@ class CustomElement extends ExtensionNode {
 		
 		let i,i0,l, $, data;
 		
+		this.acc = ExtensionNode.bind(this.__.spread(this, 'acc'), this),
+		this.__.observedAttributeNames = [
+				...(
+					new Set([
+						...(Array.isArray(this.__.observedAttributeNames) ? this.__.observedAttributeNames : []),
+						...Object.keys(this.acc)
+					])
+				)
+			],
+		
 		'tagName' in CNST && typeof CNST.tagName === 'string' &&
 			(this.template = document.getElementById(CNST.tagName)) && this.template.tagName === 'TEMPLATE' &&
 			(this.shadow = this.template.content.cloneNode(true), this.attachShadow(CNST.shadowRootInit).appendChild(this.shadow)),
@@ -741,7 +773,10 @@ class CustomElement extends ExtensionNode {
 													this.shadowRoot.firstElementChild.classList.add(CNST.tagName),
 													this.shadowRoot.firstElementChild
 												) :
-												this;
+												this,
+		
+		this.deploy(this.__.spread(this, 'element')),
+		this.deploy(this.__.spread(this, 'shadowElement'), true);
 		
 		if (this.template) {
 			
@@ -781,6 +816,17 @@ class CustomElement extends ExtensionNode {
 	disconnectedCallback() {
 		
 		this.dispatchEvent(new CustomEvent('disconnected'));
+		
+	}
+	
+	deploy(selectorObject, isShadow) {
+		
+		if (!selectorObject || typeof selectorObject !== 'object') return;
+		
+		const method = isShadow ? 'q' : 'querySelector';
+		let k;
+		
+		for (k in selectorObject) this[k] = this[method](selectorObject[k]);
 		
 	}
 	

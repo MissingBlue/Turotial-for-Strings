@@ -16,7 +16,7 @@
 				<meta-datum data-name="age" data-type="number">22</meta-datum>
 			</meta-data>
 			<section id="resources">
-				<img id="sample-icon" src="sample-icon.png" loading"lazy"></img>
+				<img id="sample-icon" src="assets/images/sample-icon.png" loading"lazy"></img>
 			</section>
 			<section id="conditions" slot="conditions">
 				<condition-node>
@@ -32,52 +32,66 @@
 			</section>
 		</template>
 		
-		<template id="script-prologue-0" data-css="default.css">
-			<article slot="script">
+		<template id="scene-prologue-0" data-css="default.css">
+			<article slot="content">
 				
-				<condition-node state="input-standby">
+				<condition-node type="input-standby">
 					<condition-evaluation data-type="input" data-value-type="regexp" data-condition="equal">^\s*$</condition-evaluation>
 					<condition-true data-name="dialogs" data-type="query-selector-all">#dialogs .d-0</condition-true>
 					<condition-false data-name="dialogs" data-type="query-selector-all">#dialogs .d-0</condition-false>
 				</condition-node>
 				
 				<s-p>
-					...
+					時は200X年
 				</s-p>
 				<s-timeout value="1000"></s-timeout>
 				<s-p>
-					...
-				</s-p>
+					地球上で起きた最終核戦争により人類の文明は消滅した。
+				</s-p><!---->
 				
 			</article>
 		</template>
 		
 		<template id="s-node" data-css="default.css">
-			<slot name="script"></slot>
+			<slot name="content"></slot>
+		</template>
+		
+		<!--<template id="scene-node" data-css="default.css">
+			<slot name="content"></slot>
+		</template>-->
+		
+		<!--<template id="s-node" data-css="default.css">
+			<slot name="content"></slot>
 		</template>
 		
 		<template id="scripts-prologue-0" data-css="default.css">
-			<s-handle type="input" operation="disable">
+			<s-handle slot="content" type="input" operation="disable">
 				<s-node content="#script-prologue-0"></s-node>
 			</s-handle>
 		</template>
 		
 		<template id="s-container" data-css="default.css">
-			<slot name="scripts"></slot>
+			<slot name="content"></slot>
+		</template>
+		
+		<template id="scenario-prologue-0">
+			<s-container slot="content" content="#scripts-prologue-0"></s-container>
+		</template>
+		
+		<template id="scenario-node" data-css="default.css">
+			<slot name="content"></slot>
 		</template>
 		
 		<template id="scene-prologue-0" data-css="default.css">
-			<article slot="scenario">
-				<s-container content="scripts-prologue-0"></s-container>
-			</article>
+			<scenario-node content="#scenario-prologue-0"></scenario-node>
 		</template>
 		
 		<template id="scene-node" data-css="default.css">
 			<section id="characters">
 				<slot name="characters"></slot>
 			</section>
-			<slot name="scenario"></slot>
-		</template>
+			<slot name="content"></slot>
+		</template>-->
 		
 		<template id="logs-node" data-css="default.css"><div></div></template>
 		<template id="logs-container" data-css="default.css"><div></div></template>
@@ -159,6 +173,9 @@
 					<scene-node></scene-node>
 				</scenes-node>-->
 				<div id="data"></div>
+				<div id="scenes">
+					<s-node content="#scene-prologue-0"></s-node>
+				</div>
 				<div id="logs">
 					<dialog-node>
 						<div slot="sprite"></div>
@@ -171,7 +188,7 @@
 			
 		</template>
 		
-		<app-node></app-node>
+		<app-node autoplay></app-node>
 		
 	</body>
 </html>

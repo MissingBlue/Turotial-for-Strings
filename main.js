@@ -143,26 +143,26 @@ class Game {
 	
 	static executor = {
 		
-		create(type, property, numbers) {
-			
-			const outputs = [], { gods } = this.world;
-			let i,oi, v;
-			
-			oi = -1;
-			for (v of gods) {
-				
-				i = -1, this.world.object[type] || (this.world.object[type] = new Set());
-				while (++i < numbers) this.world.object[type].add(v.create(type, property));
-				
-				outputs[++oi] = `created ${numbers} ${type}(s).`;
-				
-			}
-			
-			this.world.job();
-			
-			return outputs;
-			
-		},
+		//create(type, property, numbers) {
+		//	
+		//	const outputs = [], { gods } = this.world;
+		//	let i,oi, v;
+		//	
+		//	oi = -1;
+		//	for (v of gods) {
+		//		
+		//		i = -1, this.world.object[type] || (this.world.object[type] = new Set());
+		//		while (++i < numbers) this.world.object[type].add(v.create(type, property));
+		//		
+		//		outputs[++oi] = `created ${numbers} ${type}(s).`;
+		//		
+		//	}
+		//	
+		//	this.world.job();
+		//	
+		//	return outputs;
+		//	
+		//},
 		
 		browse(type) {
 			
@@ -194,8 +194,6 @@ class Game {
 		
 		this.command = {
 			
-			create,
-			
 			browse
 			
 		};
@@ -204,7 +202,7 @@ class Game {
 	
 	constructor() {
 		
-		this.world = new World();
+		this.instance = new Instance();
 		
 	}
 	
@@ -220,7 +218,7 @@ class Game {
 	
 }
 
-class World {
+class Instance {
 	
 	static {
 		
@@ -228,193 +226,6 @@ class World {
 	
 	constructor() {
 		
-		this.property = new Property(10000000, 0, undefined, Game.GlobalPropertyFlag, Game.GlobalCoefficient),
-		
-		(this.gods = new Set()).add(new God(this.property.sub(this.property / 100 * Math.random(), true))),
-		hi(+this.property);
-		this.object = {};
-		
-	}
-	
-	job() {
-		
-		const { object } = this;
-		let k,v, p;
-		
-		for (k in object) {
-			
-			if (!((p = object[k]) instanceof Set)) continue;
-			
-			for (v of p) v.job();
-			
-		}
-		
-	}
-	
-}
-
-class God {
-	
-	static {
-	}
-	
-	constructor(property = 10000) {
-		
-		this.property = property;
-		
-	}
-	
-	born(partner) {
-		
-		return new God((this.property + partner.property) / 2);
-		
-	}
-	
-	create(type, property) {
-		
-		if (Number.isNaN(property = +property) || property < 0  || this.property < property) return;
-		
-		this.property -= property;
-		
-		switch (type) {
-			case 'human':
-			return new Human(property);
-			case 'nature':
-			return new Nature(property);
-			case 'threat':
-			return new Threat(property);
-		}
-		
-	}
-	
-}
-
-class Jobs extends Array {
-	
-	constructor() {
-		
-		super(arguments);
-		
-	}
-	
-}
-
-class Job {
-	
-	static {
-		
-		this.main = Symbol('Job.main'),
-		this.job = Symbol('Job.job');
-		
-	}
-	constructor() {
-		
-		
-	}
-	
-}
-class JobSleep extends Job {
-	
-	static {
-		
-		
-	}
-	constructor() {
-		
-		super();
-		
-	}
-	[Job.main](target) {
-		
-		target.factor = Math.max(target.factor += target.factor * 1, 1);
-		
-	}
-	
-}
-class JobEat extends Job {
-	
-	static {
-		
-		
-	}
-	constructor() {
-		
-		super();
-		
-	}
-	
-	[Job.main](target) {
-		
-		target.potential += 1;
-		target.factor = Math.max(target.factor += target.factor * 1, 1);
-		
-	}
-	
-}
-class JobWork extends Job {
-	
-	static {
-		
-		
-	}
-	constructor() {
-		
-		super();
-		
-	}
-	
-	[Job.main](target) {
-		
-		target.potential += 1;
-		target.factor = Math.max(target.factor += target.factor * 1, 1);
-		
-	}
-	
-}
-
-class Stuff extends God {
-	
-	static {
-		
-		this.job = Symbol('Stuff.job');
-		
-	}
-	
-	constructor(property) {
-		
-		super(property),
-		
-		this.potential = this.property / 2,
-		this.factor = 1,
-		
-		this.jobs = new Jobs(this.constructor.jobs);
-		
-	}
-	
-	[Job.job]() {
-		
-		const { main } = Job;
-		
-		return this.jobs[this.jobs.length * Math.random() |0][main]();
-		
-	}
-	
-}
-class Human extends Stuff {
-	
-	static {
-		
-		this.jobs = [
-			new JobSleep(),
-			new JobEat(),
-			new JobWork()
-		];
-		
-	}
-	
-	constructor(property) {
-		
-		super(property);
 		
 	}
 	
@@ -545,17 +356,674 @@ class Parser extends ParseHelper {
 	
 }
 
-// Interfaces
+// Custom Elements
+
+// スクリプト関連
+
+// 静的プロパティ subscriptions に指定された記述子が示すイベントハンドラーをインスタンスに登録する。
+// ハンドラーは、インスタンスのプロパティ subscriber に記録されるが、継承先ではこのプロパティを意識する必要はない。
+// 継承先で実装する必要があるのは subscriptions と、connectedCallback 内での subscribe の実行である。
+// このスクリプトのカスタム要素は utils.js の CustomElement を継承し、
+// CustomElement では（正確には CustomElement が継承する ExtensionNode では）イベントリスナーの管理を一元化して一括して行なうが、
+// それでは不十分だった、一括して、かつ部分的にイベントリスナーを登録、削除したい場合に対応する機能を提供するのがこのカスタム要素の目的。
+class SubscriptionNode extends CustomElement {
+	
+	static {
+		
+		this.to = Symbol('SubscriptionNode.to'),
+		this.noSubscriptionArgs = Symbol('SubscriptionNode.noSubscriptionArgs');
+		
+	}
+	
+	constructor() {
+		
+		super();
+		
+		this.subscriptionsAC = new AbortController(),
+		
+		this.createSubscribers(undefined, this.subscriber = {});
+		
+	}
+	
+	createSubscribers(subscriptions = this.__.subscriptions, subscriber) {
+		
+		const l = subscriptions?.length;
+		
+		if (!l || !Array.isArray(subscriptions) || !subscriber || typeof subscriber !== 'object') return;
+		
+		const { noSubscriptionArgs, to } = this.__;
+		let i, subscription, handler, thisArg, args;
+		
+		i = -1;
+		while (++i < l) {
+			
+			typeof (handler = (subscription = subscriptions[i]).handler) === 'function' && (
+					
+					thisArg = 'thisArg' in subscription ? subscription.thisArg : this,
+					args = 'args' in subscription ?
+						Array.isArray(args = subscription.args) ? args : [ args ] : noSubscriptionArgs,
+					
+					(
+						subscriber[subscription.key ||= Symbol(`SubscriptionNode.subscriptions[${i}]`)] =
+							args === noSubscriptionArgs ? handler.bind(thisArg) : handler.bind(thisArg, ...args)
+					)[to] = subscription.to || ':scope'
+					
+				);
+			
+		}
+		
+	}
+	
+	// SubscriptionNode.prototype.subscribe は、継承先の connectedCallback 内で実行されることを想定している。
+	// 継承先はその実行処理を実装する必要がある。
+	subscribe(subscriptions = this.__.subscriptions, subscriber = this.subscriber, ac = this.bscriptionsAC) {
+		
+		const l = subscriptions?.length;
+		
+		if (!l || !Array.isArray(subscriptions) || !subscriber || typeof subscriber !== 'object') return;
+		
+		const { to } = this.constructor;
+		let i, signal;
+		
+		i = -1, ac instanceof AbortController && (ac.abort(), signal = ac.signal);
+		while (++i < l) {
+			
+			const { type, option, key } = subscriptions[i], handler = subscriber[key];
+			
+			this.composeClosest(handler[to])?.addEventListener?.(
+					type,
+					handler,
+					option && typeof option === 'object' ?
+						{ ...option, signal } : signal ? { signal, useCapture: !!option } : !!option
+				);
+			
+		}
+		
+	}
+	unsubscribe() {
+		
+		this.subscriptionsAC.abort();
+		
+	}
+	
+}
+// SceneNode と、それに内包されることが期待されるカスタム要素のすべてが継承する基底クラス。
+// for await ...of... に指定することで、指定した要素とその子孫要素が実装するメソッド play を再帰し、また同期して実行する。
+// メソッド play は Promise を含む任意の戻り値を指定可能だが、その戻り値が処理に反映されることはない。
+// ただし、Promise が返された場合は、その Promise の解決を待ってから、次の実行に移る。
+// play の実装は必須でもなく、その場合は戻り値が非 Promise の時と同様に即座に次の要素の play を実行する。
+// イメージとしては、<a><b></b><c></c></a> だった場合、a の play を実行すると、
+// その play が返す Promise の解決後、a の子要素 b の play を自動で実行し、
+// 同様にそれが返す Promise の解決後、隣の c の play を実行して、解決後に再帰を終える。
+
+// Proxy を継承するこのオブジェクトのコンストラクターの第一引数に与えられる target は、Node を継承していることと、
+// get target.constructor[ScriptIterator.iteratorName] と、その値が示すインスタンスのプロパティが列挙可能な値を返す必要がある。
+// ただし、Node を継承してさえいれば、列挙可能値はその子要素が既定値として使われる。
+//class ScriptIterator {
+//	
+//	static get(target, property, receiver) {
+//		
+//		return property === 'proxied' ? this.proxied : property in target ? Reflect.get(...arguments) : this[property];
+//		
+//	}
+//	
+//	static {
+//		
+//		this[this.iteratorName = Symbol('ScriptIterator.iteratorName')] = 'children',
+//		
+//		this.play = Symbol('ScriptIterator.play'),
+//		
+//		this[this.handlerName = Symbol.for(this.handlerSymbolKey = 'ScriptIterator.iteratorName')] = 'play';
+//		
+//	}
+//	
+//	constructor(target) {
+//		
+//		//super(target, ScriptProxy);
+//		
+//		this.proxied = new Proxy(target, ScriptIterator);
+//		
+//	}
+//	
+//	[Symbol.keyFor(ScriptIterator.handlerSymbolKey)]() {
+//		
+//		return new Promise(async rs => {
+//				
+//				await this?.[this.handlerName]?.();
+//				
+//				if (Symbol.asyncIterator in this) for await (const v0 of this);
+//					else for (const v of this.children) for await (const v0 of new ScriptIterator(v));
+//				
+//			});
+//		
+//	}
+//	
+//	*[Symbol.iterator]() {
+//		
+//		for (const v of this[this.iteratorName]) yield v;
+//		
+//	}
+//	async* [Symbol.asyncIterator]() {
+//		
+//		const { play } = ScriptIterator;
+//		
+//		for (const v of this) await v?.[play]?.(), yield v;
+//		
+//	}
+//	
+//	get iteratorName() {
+//		
+//		return this.constructor[ScriptIterator.iteratorName] || ScriptIterator[ScriptIterator.iteratorName];
+//		
+//	}
+//	get handlerName() {
+//		
+//		return this.constructor[ScriptIterator.handlerName] || ScriptIterator[ScriptIterator.handlerName];
+//		
+//	}
+//	
+//}
+
+// SNode と、その子要素を指定して実行される Proxy.prototype.constuctor の第二引数 handler に与えられるオブジェクト。
+// コンストラクターは存在せず、静的プロパティ、メソッドだけが存在しない。上記の要素の特定のメソッドを再帰して、同期的に順次実行する機能を提供する。
+class ScriptProxy {
+
+	static {
+		
+		this[this.iteratorName = Symbol('ScriptProxy.iteratorName')] = 'children',
+		
+		this[this.handlerName = Symbol('ScriptProxy.iteratorName')] = 'play',
+		
+		this[this.callbackName = Symbol('ScriptProxy.callbackName')] = proxied => {
+			
+			return new Promise(async rs => {
+					
+					await proxied?.[proxied.handlerName]?.();
+					
+					for await (const v of proxied);
+					
+					rs();
+					
+				});
+			
+		};
+		
+	};
+	
+	static get(target, property, receiver) {
+		
+		switch (property) {
+			
+			case 'iteratorName': case 'handlerName':
+			return (property = this[property]) in target.constructor ?	target.constructor[property] :
+																							this[property];
+			
+		}
+		
+		// getter であるプロパティから値を取得する時に、Reflect.get の第三引数に receiver を指定すると、
+		// TypeError: 'get プロパティ名' called on an object that does not implement interface Element.
+		// が発生する。そのため、receiver を指定せずに実行するように変更したが、
+		// エラーの原因がよくわかっていないため、この対応に問題がないかどうかは不明。
+		
+		//return property in target ? Reflect.get(...arguments) : this[property];
+		return property in target ? Reflect.get(target, property) : this[property];
+		
+	}
+	
+	static apply(target, thisArg, argumentsList) {
+		
+		return Reflect.apply(...arguments);
+		
+	}
+	
+	static *[Symbol.iterator]() {
+		
+		for (const v of this[this.iteratorName]) yield new Proxy(v, ScriptProxy);
+		
+	}
+	
+	static async *[Symbol.asyncIterator]() {
+		
+		const { callbackName } = ScriptProxy;
+		
+		for (const proxied of this) await proxied?.[callbackName]?.(proxied), yield proxied;
+		
+	}
+	
+}
+//coco 最小限の構成から少しずつテストしていく
+class SNode extends SubscriptionNode {
+	
+	static bound = {
+	};
+	
+	static {
+		
+		this.slotName = 'content',
+		
+		this.tagName = 's-node',
+		
+		this[ScriptProxy.iteratorName] = 'assignedNodes';
+		
+	}
+	
+	constructor() {
+		
+		super(),
+		
+		this.setContent();
+		
+	}
+	
+	play() {
+		
+		return Promise.resolve();
+		
+	}
+	
+	//[SubscriptionNode.play]() {
+	//	
+	//	return new Promise(async rs => {
+	//			
+	//			await this?.play?.();
+	//			
+	//			for (const v of this.children) {
+	//				
+	//				const child = v instanceof ScriptElement ? v : new Proxy(v, )
+	//				
+	//				for await (const v0 of v);
+	//				
+	//			}
+	//			
+	//		});
+	//	
+	//}
+	//
+	//*[Symbol.iterator]() {
+	//	
+	//	for (const v of this.assignedNodes) yield v;
+	//	
+	//}
+	//async* [Symbol.asyncIterator]() {
+	//	
+	//	const { play } = SubscriptionNode;
+	//	
+	//	for (const v of this) await v?[play]?.(), yield v;
+	//	
+	//}
+	//[Symbol.asyncIterator]() {
+	//	
+	//	const	snodes = this.q(this.__.iteratorQuery)?.assignedNodes?.(), l = snodes?.length ?? 0,
+	//			next = detail => {
+	//					
+	//					const	snode = l && snodes[i], done = ++i >= l;
+	//					
+	//					return	snode?.play?.(detail)?.then?.(value => ({ value, done })) ||
+	//									Promise.resolve({ value: snodes, done });
+	//					
+	//				};
+	//	let i = 0;
+	//	
+	//	return { next };
+	//	
+	//}
+	
+	setContent(selector = this.content, appends) {
+		
+		const contents = document.querySelectorAll(selector), l = contents.length;
+		
+		if (!l) return;
+		
+		appends && this.removeContent();
+		
+		const contentNode = document.createElement('div');
+		let i;
+		
+		i = -1, contentNode.slot = this.slotName;
+		while (++i < l) contentNode.appendChild(contents[i].content.cloneNode(true));
+		
+		this.appendChild(contentNode);
+		
+	}
+	removeContent() {
+		
+		const { assignedNodes } = this;
+		
+		if (assignedNodes) for (const v of assignedNodes) v.remove();
+		
+	}
+	
+	get slotName() {
+		
+		return this.constructor.slotName || SNode.slotName;
+		
+	}
+	get slotQuery() {
+		
+		return `slot[name="${this.slotName}"]`;
+		
+	}
+	get assignedNodes() {
+		
+		return this.shadowRoot.querySelector(this.slotQuery)?.assignedNodes?.() || [];
+		
+	}
+	
+	get content() {
+		
+		return this.getAttribute('content');
+		
+	}
+	set content(v) {
+		
+		this.setAttribute('content', v);
+		
+	}
+	
+	
+}
+//class SceneNode extends CustomElement {
+//	
+//	static bound = {
+//	};
+//	
+//	static {
+//		
+//		this.tagName = 'scene-node';
+//		
+//	}
+//	
+//	constructor() {
+//		
+//		super(),
+//		
+//		this.setContent();
+//		
+//	}
+//	
+//	async play() {
+//		
+//		const	scenario = this.q('slot[name="scenario"]')?.assignedNodes()[0],
+//				played = scenario?.play?.();
+//		
+//		return typeof playThen === 'function' ? new Promise(rs => played.then(value => rs(value))) : Promise.resolve(scenario);
+//		
+//	}
+//	
+//	setContent(selector = this.content) {
+//		
+//		const contents = [ ...document.querySelectorAll(selector) ], l = contents.length;
+//		
+//		if (!l) return;
+//		
+//		const	contentNode = document.createElement('div'),
+//				assignedNodes = this.q('slot[name="content"]')?.assignedNodes?.();
+//		let i;
+//		
+//		if (assignedNodes) for (const v of assignedNodes) v.remove();
+//		
+//		i = -1, contentNode.slot = 'content';
+//		while (++i < l) contents[i] = contents[i].content.cloneNode(true);
+//		
+//		this.append(...contents);
+//		
+//	}
+//	
+//	get content() {
+//		
+//		return this.getAttribute('content');
+//		
+//	}
+//	set content(v) {
+//		
+//		this.setAttribute('content', v);
+//		
+//	}
+//
+//	
+//}
+//class ScenarioNode extends CustomElement {
+//	
+//	static bound = {
+//		
+//	};
+//	
+//	static {
+//		
+//		this.tagName = 'scenario-node';
+//		
+//	}
+//	
+//	constructor() {
+//		
+//		super(),
+//		
+//		this.setContent();
+//		
+//	}
+//	
+//	async play() {
+//		
+//		return new Promise(async rs => {
+//			
+//			const scenarios = this.q('slot[name="container"]')?.assignedNodes?.(), l = scenarios.length;
+//			let i, scenario;
+//			
+//			i = -1;
+//			while (++i < l) {
+//				hi(scenarios[i]);
+//				if ((scenario = scenarios[i]) instanceof SContainer) for await (const v of scenario);
+//				else {
+//					
+//					await scenario?.play();
+//					
+//				}
+//			}
+//			
+//			rs();
+//			
+//		});
+//		
+//	}
+//	
+//	setContent(selector = this.content) {
+//		
+//		const contents = [ ...document.querySelectorAll(selector) ], l = contents.length;
+//		
+//		if (!l) return;
+//		
+//		const	contentNode = document.createElement('div'),
+//				assignedNodes = this.q('slot[name="content"]')?.assignedNodes?.();
+//		let i;
+//		
+//		if (assignedNodes) for (const v of assignedNodes) v.remove();
+//		
+//		i = -1, contentNode.slot = 'content';
+//		while (++i < l) (contents[i] = contents[i].content.cloneNode(true)).slot = 'scenario';
+//		
+//		this.append(...contents);
+//		
+//	}
+//	
+//	get content() {
+//		
+//		return this.getAttribute('content');
+//		
+//	}
+//	set content(v) {
+//		
+//		this.setAttribute('content', v);
+//		
+//	}
+//	
+//}
+//class SContainer extends ScriptNode {
+//	
+//	static bound = {
+//	};
+//	
+//	static {
+//		
+//		this.tagName = 's-container',
+//		this.slotName = 'container';
+//		
+//	}
+//	
+//	constructor() {
+//		
+//		super();
+//		
+//	}
+//	
+//	async play() {
+//		
+//		return new Promise(async rs => {
+//				
+//				const scripts = this.qq('slot[name="scripts"]').assignedNodes(), l = scripts.length;
+//				let i, script;
+//				
+//				i = -1;
+//				while (++i < l) {
+//					
+//					if ((script = scripts[i]) instanceof SNode) for await (const v of script);
+//					else {
+//						
+//						await script?.play();
+//						
+//					}
+//					
+//					
+//				}
+//				
+//				rs();
+//				
+//			});
+//		
+//	}
+//	
+//}
+
+//coco レイヤー的な要素をひとつにして再帰して使うようにする。
+//class SceneNode extends CustomElement {
+//	
+//	static bound = {
+//	};
+//	
+//	static {
+//		
+//		this.tagName = 'scene-node';
+//		
+//	}
+//	
+//	constructor() {
+//		
+//		super();
+//		
+//	}
+//
+//	
+//}
+//class ScenarioNode extends CustomElement {
+//	
+//	static bound = {
+//		
+//	};
+//	
+//	static {
+//		
+//		this.tagName = 'scenario-node';
+//		
+//	}
+//	
+//	constructor() {
+//		
+//		super();
+//		
+//	}
+//	
+//}
+//class SContainer extends ScriptNode {
+//	
+//	static bound = {
+//	};
+//	
+//	static {
+//		
+//		this.tagName = 's-container',
+//		this.slotName = 'container';
+//		
+//	}
+//	
+//	constructor() {
+//		
+//		super();
+//		
+//	}
+//	
+//	async play() {
+//		
+//		return new Promise(async rs => {
+//				
+//				const scripts = this.qq('slot[name="scripts"]').assignedNodes(), l = scripts.length;
+//				let i, script;
+//				
+//				i = -1;
+//				while (++i < l) {
+//					
+//					if ((script = scripts[i]) instanceof SNode) for await (const v of script);
+//					else {
+//						
+//						await script?.play();
+//						
+//					}
+//					
+//					
+//				}
+//				
+//				rs();
+//				
+//			});
+//		
+//	}
+//	
+//}
+//class SceneNode extends ScriptElement {
+//	
+//	static bound = {
+//	};
+//	
+//	static {
+//		
+//		this.tagName = 'scene-node';
+//		
+//	}
+//	
+//	constructor() {
+//		
+//		super();
+//		
+//	}
+//
+//	
+//}
 
 class AppNode extends CustomElement {
 	
 	static bound = {
 		
-		input({ detail: { value } }) {
+		input({ target }) {
 			
-			const inputs = value && this.parser.parse(value);
+			const { value } = target, inputs = value && this.parser.parse(value);
+			
+			this.emit('app-input', { target, inputs }),
 			
 			inputs?.length && this.run(inputs);
+			
+		},
+		
+		defined() {
+			
+			this.play();
 			
 		}
 		
@@ -563,7 +1031,15 @@ class AppNode extends CustomElement {
 	
 	static {
 		
-		this.tagName = 'app-node';
+		this.tagName = 'app-node',
+		
+		this[ScriptProxy.iteratorName] = 'scenes',
+		
+		this.shadowElement = {
+			
+			dataNode: '#data'
+			
+		};
 		
 	}
 	
@@ -580,9 +1056,27 @@ class AppNode extends CustomElement {
 		(this.heat = document.createElement('character-node')).dataset.data = '#character-heat',
 		//(this.heat = document.createElement('character-node')).
 		//	appendChild(document.getElementById('character-heat').content.cloneNode(true)),
-		this.q('#data').appendChild(this.heat),
 		
-		this.addEventListener('input', this.input);
+		this.dataNode.appendChild(this.heat),
+		
+		this.addEventListener('console-input', this.input);
+		
+	}
+	connectedCallback() {
+		
+		this.autoplay && customElements.whenDefined(this.tagName.toLowerCase()).then(this.defined);
+		
+	}
+	
+	async play() {
+		
+		//const scenes = this.qq('#scenes > scene-node'), l = scenes.length;
+		//let i;
+		//
+		//i = -1;
+		//while (++i < l) await scenes[i].play();
+		
+		for await (const v of new Proxy(this, ScriptProxy));
 		
 	}
 	
@@ -623,18 +1117,624 @@ class AppNode extends CustomElement {
 		i = i0 = -1;
 		while (++i < l) data[i][isNotLog] ? browserNode.setContent(i, data[i], true) : (logs[++i0] = data[i]);
 		
-		if (logs.length) {
+		logs.length && this.addLogs(logs, placeholder);
+		
+	}
+	
+	addLogs(logs, placeholder) {
+		
+		if (!logs || !(Array.isArray(logs) ? logs : (logs = [ logs ])).length) return;
+		
+		const dialogNodes = this.qq('dialog-node'), l = dialogNodes.length;
+		let i;
+		
+		i = -1;
+		while (++i < l) dialogNodes[i].dialog?.addLogs?.(logs, placeholder);
+		
+	}
+	
+	disableConsoles(disables) {
+		
+		const consolesNodes = this.qq('consoles-node'), l = consolesNodes.length;
+		let i;
+		
+		i = -1;
+		while (++i < l) consolesNodes[i].disableConsoles(disables);
+		
+	}
+	
+	get autoplay() {
+		
+		return this.hasAttribute('autoplay');
+		
+	}
+	set autoplay(v) {
+		
+		return v === false ? this.removeAttribute('autoplay') : this.setAttribute('autoplay', v);
+		
+	}
+	
+	get scenes() {
+		
+		return this.qq('#scenes > s-node');
+		
+	}
+	
+}
+
+// 論理演算を表現するカスタム要素
+
+class ConditionNode extends SubscriptionNode {
+	
+	static bound = {
+		
+		mutatedChildList() {
 			
-			const dialogNodes = this.qq('dialog-node'), l = dialogNodes.length;
+			this.updateHint();
+			
+		},
+		
+		// 非束縛関数だと Proxy から呼び出された時に this.cloneNode の実行に失敗するため、
+		// this の参照先を Proxy 越しではなくインスタンスに直に固定するために束縛している。
+		// cloneNode 以外のプロパティやメソッドは束縛しなくてもアクセスができるため、
+		// ビルトインオブジェクト（特に DOM）の特定のプロパティ、メソッドには特殊な仕様があるのかもしれない。
+		play() {
+			
+			return new Promise (async rs => {
+					
+					await this.evaluate(),
+					
+					rs();
+					
+				});
+			
+		}
+		
+	};
+	
+	static subscriptions = [
+		
+		{
+			to: 'app-node',
+			type: 'app-input',
+			handler({ inputs }) {
+				
+				const l = inputs.length;
+				let i;
+				
+				i = -1;
+				while (++i < l) this.evaluate(inputs[i]);
+				
+			}
+		}
+		
+	];
+	
+	static {
+		
+		this.tagName = 'condition-node',
+		
+		this.result = Symbol('ConditionNode.result'),
+		
+		this.conditionNodes = [ 'condition-node', 'condition-evaluation' ],
+		
+		this.conditionTagNames = new RegExp(`^(?:${this.conditionNodes.join('|')})$`, 'i'),
+		this.conditionNodesSelector = `:scope > ${this.conditionNodes.join(',')}`,
+		
+		this.mutatedChildListOption = { childList: true };
+		
+	}
+	
+	constructor() {
+		
+		super(),
+		
+		this.observeMutation(this.mutatedChildList, this, ConditionNode.mutatedChildListOption),
+		
+		this.updateHint();
+		
+	}
+	connectedCallback() {
+		
+		this.subscribes && this.subscribe();
+		
+	}
+	disconnectedCallback() {
+		
+		this.unsubscribe();
+		
+	}
+	
+	updateHint() {
+		
+		const	conditions = this.querySelectorAll(ConditionNode.conditionNodesSelector), l = conditions.length,
+				types = new Set();
+		let i;
+		
+		i = -1;
+		while (++i < l) types.add(conditions[i].dataset?.type ?? 'input');
+		
+		this.dataset.has = [ ...types ].join(' ');
+		
+	}
+	
+	evaluate(input, evaluated) {
+		
+		if (input === undefined && this.getAttribute('type') === 'input-standby') {
+			
+			this.subscribes = true, this.subscribe();
+			
+			return;
+			
+		}
+		
+		(evaluated && typeof evaluated === 'object') || (evaluated = {});
+		
+		const	{ result: symResult } = ConditionNode,
+				result =
+					this.querySelector(':is(condition-evaluation, condition-node):first-child')?.evaluate?.(input, evaluated),
+				executions = this.querySelectorAll(`:scope > condition-${result[symResult]}`), l = executions.length;
+		let next;
+		
+		evaluated = { ...evaluated, [symResult]: result[symResult] };
+		
+		if (l) {
+			
+			let i, exec;
 			
 			i = -1;
-			while (++i < l) dialogNodes[i].dialog?.addLogs?.(logs, placeholder);
+			while (++i < l) evaluated[(exec = executions[i]).dataset.name] = exec.execute();
+			
+			this.emit(result, evaluated);
+			
+		}
+		
+		if (result) {
+			
+			const { conditionTagNames } = ConditionNode;
+			
+			next = this.nextSibling;
+			while (!conditionTagNames.test(next.tagName) && (next = next.nextSibling));
+			
+		}
+		
+		return next?.evaluate?.(input, evaluated) ?? evaluated;
+		
+	}
+	
+}
+class ConditionEvaluation extends CustomElement {
+	
+	static {
+		
+		this.tagName = 'condition-evaluation';
+		
+	}
+	
+	constructor() {
+		
+		super();
+		
+	}
+	
+	play() {
+		
+		return new Promise(async rs => {
+				
+				await this.evaluate();
+				
+				rs();
+				
+			});
+		
+	}
+	
+	evaluate(input, evaluated = {}) {
+		
+		(evaluated && typeof evaluated === 'object') || (evaluated = {});
+		
+		const { condition, logic = 'and', type } = this.dataset;
+		let result, next, left;
+		
+		switch (type) {
+			default: left = input;
+		}
+		
+		switch (condition) {
+			default: result = this.isEqual(left);
+		}
+		
+		if ((evaluated[ConditionNode.result] = result) ? logic === 'or' : logic === 'and') return evaluated;
+		
+		const { conditionTagNames } = ConditionNode;
+		
+		next = this.nextSibling;
+		while (!conditionTagNames.test(next.tagName) && (next = next.nextSibling));
+		
+		return next?.evaluate?.(left, evaluated) ?? evaluated;
+		
+	}
+	
+	isEqual(left) {
+		switch (this.dataset.valueType) {
+			case 'regexp': return this.valueOf().test(left);
+			default: return left === this;
+		}
+	}
+	
+	valueOf() {
+		switch (this.dataset.valueType) {
+			case 'number': return +this.textContent;
+			case 'regexp': return new RegExp(this.textContent, this.dataset?.regexpOption ?? '');
+			default: return this.textContent;
+		}
+	}
+	
+}
+// ConditionTrue, ConditionFalse が継承するオブジェクト
+class ConditionExecution extends CustomElement {
+	
+	static bound = {
+		
+		play(rs) {
+			
+			return new Promise(async rs => {
+					
+					await this.execute(), rs();
+					
+				});
+			
+		}
+		
+	};
+	
+	static {
+		
+		this.tagName = 'condition-execution';
+		
+	}
+	
+	constructor() {
+		
+		super();
+		
+	}
+	
+	async play() {
+		
+		return new Promise(this.playing);
+		
+	}
+	
+	execute() {
+		
+		switch (this.dataset.type) {
+			
+			case 'query-selector':
+			return this.getRootNode().querySelector(this.textContent)?.cloneNode?.(true);
+			
+			case 'query-selector-all':
+			const nodes = this.getRootNode().querySelectorAll(this.textContent), l = nodes.length, values = [];
+			let i, v;
+			
+			i = -1;
+			for (v of nodes) values[++i] = v.cloneNode(true);
+			
+			return values;
 			
 		}
 		
 	}
 	
 }
+class ConditionTrue extends ConditionExecution {
+	static {
+		this.tagName = 'condition-true';
+	}
+	constructor() {
+		super();
+	}
+}
+class ConditionFalse extends ConditionExecution {
+	static {
+		this.tagName = 'condition-false';
+	}
+	constructor() {
+		super();
+	}
+}
+
+class STimeout extends CustomElement {
+	
+	static {
+		
+		this.tagName = 's-timeout';
+		
+	}
+	
+	constructor() {
+		
+		super();
+		
+	}
+	
+	play() {
+		
+		return new Promise(rs => setTimeout(rs, this.value));
+		
+	}
+	
+	get value() {
+		
+		return Property.num(this.getAttribute('value'), 0);
+		
+	}
+	set value(v) {
+		
+		return this.setAttribute('value', v);
+		
+	}
+	
+}
+class SP extends CustomElement {
+	
+	static bound = {
+		
+		play() {
+			
+			this.composeClosest('app-node')?.addLogs(this.cloneNode(true));
+			
+		}
+		
+	}
+	
+	static {
+		
+		this.tagName = 's-p';
+		
+	}
+	
+	constructor() {
+		
+		super();
+		
+	}
+	
+}
+class SHandle extends CustomElement {
+	
+	static {
+		
+		this.tagName = 's-handle';
+		
+	}
+	
+	constructor() {
+		
+		super();
+		
+	}
+	
+	operate(type, operation) {
+		
+		const appNode = this.composeClosest('app-node');
+		
+		operation ? (this.operation = operation) : (type = this.type);
+		
+		switch (type ? (this.type = type) : this.type) {
+			case 'input':
+			appNode.disableConsoles(operation);
+			break;
+		}
+		
+	}
+	
+	async play() {
+		
+		return new Promise(async rs => {
+				
+				const { children } = this, l = children.length;
+				let i;
+				
+				i = -1, this.operate();
+				while (++i < l) await children[i]?.play?.();
+				
+				rs();
+				
+			});
+		
+	}
+	
+	get operation() {
+		
+		return this.getAttribute('operation');
+		
+	}
+	set operation(v) {
+		
+		this.setAttribute('operation', v);
+		
+	}
+	get type() {
+		
+		return this.getAttribute('type');
+		
+	}
+	set type(v) {
+		
+		this.setAttribute('type', v);
+		
+	}
+	
+}
+class ScriptNode extends SubscriptionNode {
+	
+	static bound = {};
+	
+	static acc = {
+		
+		content(name, oldValue, newValue) {
+			
+			this.setContent(newValue);
+			
+		}
+		
+	};
+	
+	static subscriptinos = [
+		
+		{
+			to: 'app-node',
+			type: 'input',
+			handler({ target }) {
+				
+				this.emit
+				
+			}
+		}
+		
+	];
+	
+	static {
+		
+		this.tagName = 'script-node';
+		
+	}
+	
+	constructor() {
+		
+		super();
+		
+		this.setContent();
+		
+	}
+	connectedCallback() {
+		
+		this.subscribe();
+		
+	}
+	disconnectedCallback() {
+		
+		this.unsubscribe();
+		
+	}
+	static get observedAttributes() {
+		
+		return this.__?.observedAttributeNames;
+		
+	}
+	attributeChangedCallback(name, oldValue, newValue) {
+		
+		this.acc?.[name]?.(name, oldValue, newValue);
+		
+	}
+	
+	setContent(selector = this.content) {
+		
+		const contents = [ ...document.querySelectorAll(selector) ], l = contents.length;
+		
+		if (!l) return;
+		
+		const	contentNode = document.createElement('div'),
+				assignedNodes = this.q('slot[name="content"]')?.assignedNodes?.();
+		let i;
+		
+		if (assignedNodes) for (const v of assignedNodes) v.remove();
+		
+		i = -1, contentNode.slot = 'content';
+		while (++i < l) contents[i] = contents[i].content.cloneNode(true);
+		
+		this.append(...contents);
+		
+	}
+	
+	play() {
+		
+		return Promise.resolve();
+		
+	}
+	
+	[Symbol.asyncIterator]() {
+		
+		const	snodes = this.q(`slot[name="${this.__.slotName}"]`)?.assignedNodes?.(), l = snodes?.length ?? 0;
+		let i;
+		
+		i = 0;
+		
+		return {
+			
+			next: detail => {
+				
+				const	snode = l && snodes[i], done = ++i >= l, played = snode?.play?.(detail);
+				
+				return played?.then?.(value => ({ value, done })) || Promise.resolve({ value: snode, done });
+				//return typeof played === 'function' ?
+				//	new Promise(rs => played.then(value => rs({ value, done }))) : Promise.resolve({ value: snode, done });
+				
+			}
+			
+		}
+		
+	}
+	
+	get content() {
+		
+		return this.getAttribute('content');
+		
+	}
+	set content(v) {
+		
+		this.setAttribute('content', v);
+		
+	}
+	
+}
+//class SNode extends ScriptNode {
+//	
+//	static bound = {
+//		
+//		
+//	};
+//	
+//	static {
+//		
+//		this.tagName = 's-node',
+//		this.slotName = 'scripts';
+//		
+//	}
+//	
+//	constructor() {
+//		
+//		super();
+//		
+//	}
+//	
+//	async play() {
+//		
+//		return new Promise(async rs => {
+//				
+//				const scripts = this.q('slot[name="scripts"]')?.assignedNodes?.(), l = scripts?.length;
+//				let i,i0,l0, elements, v;
+//				
+//				i = -1;
+//				while (++i < l) {
+//					
+//					i0 = -1, l0 = (elements = scripts[i].children).length;
+//					while (++i0 < l0) {
+//						(v = elements[i0]?.play?.()) instanceof Promise &&
+//							await v.then(v => v instanceof Node && this.append(v))
+//					}
+//					
+//				}
+//				
+//				rs();
+//				
+//			});
+//		
+//	}
+//	
+//}
+
 class DialogNode extends CustomElement {
 	
 	static {
@@ -908,30 +2008,6 @@ class SpriteNode extends CustomElement {
 	
 }
 
-class ScenesNode extends CustomElement {
-	
-	static {
-		
-		this.tagName = 'scenes-node';
-		
-	}
-	
-	constructor() {
-		
-		super();
-		
-	}
-	
-}
-class SceneNode extends CustomElement {
-	static {
-		this.tagName = 'scene-node';
-	}
-	constructor() {
-		super();
-	}
-}
-
 class CharacterNode extends CustomElement {
 	
 	static bound = {
@@ -1119,193 +2195,6 @@ class MetaDatum extends CustomElement {
 	
 }
 
-class ConditionNode extends CustomElement {
-	
-	static bound = {
-		
-		mutatedChildList() {
-			
-			this.updateHint();
-			
-		}
-		
-	};
-	
-	static {
-		
-		this.tagName = 'condition-node',
-		
-		this.result = Symbol('ConditionNode.result'),
-		
-		this.conditionNodes = [ 'condition-node', 'condition-evaluation' ],
-		
-		this.conditionTagNames = new RegExp(`^(?:${this.conditionNodes.join('|')})$`, 'i'),
-		this.conditionNodesSelector = `:scope > ${this.conditionNodes.join(',')}`,
-		
-		this.mutatedChildListOption = { childList: true };
-		
-	}
-	
-	constructor() {
-		
-		super(),
-		
-		this.observeMutation(this.mutatedChildList, this, ConditionNode.mutatedChildListOption),
-		
-		this.updateHint();
-		
-	}
-	
-	updateHint() {
-		
-		const	conditions = this.querySelectorAll(ConditionNode.conditionNodesSelector), l = conditions.length,
-				types = new Set();
-		let i;
-		
-		i = -1;
-		while (++i < l) types.add(conditions[i].dataset?.type ?? 'input');
-		
-		this.dataset.has = [ ...types ].join(' ');
-		
-	}
-	
-	evaluate(input, evaluated) {
-		
-		(evaluated && typeof evaluated === 'object') || (evaluated = {});
-		
-		const	{ result: symResult } = ConditionNode,
-				result = this.querySelector(':is(condition-evaluation, condition-node):first-child')?.evaluate?.(input),
-				executions = this.querySelectorAll(`:scope > condition-${result[symResult]}`), l = executions.length;
-		let next;
-		
-		evaluated = { ...evaluated, [symResult]: result[symResult] };
-		
-		if (l) {
-			
-			let i, exec;
-			
-			i = -1;
-			while (++i < l) evaluated[(exec = executions[i]).dataset.name] = exec.execute();
-			
-			this.emit(result, evaluated);
-			
-		}
-		
-		if (result) {
-			
-			const { conditionTagNames } = ConditionNode;
-			
-			next = this.nextSibling;
-			while (!conditionTagNames.test(next.tagName) && (next = next.nextSibling));
-			
-		}
-		
-		return next?.evaluate?.(input, evaluated) ?? evaluated;
-		
-	}
-	
-}
-class ConditionEvaluation extends CustomElement {
-	
-	static {
-		
-		this.tagName = 'condition-evaluation';
-		
-	}
-	
-	constructor() {
-		
-		super();
-		
-	}
-	
-	evaluate(input, evaluated = {}) {
-		
-		(evaluated && typeof evaluated === 'object') || (evaluated = {});
-		
-		const { condition, logic = 'and', type } = this.dataset;
-		let result, next, left;
-		
-		switch (type) {
-			default: left = input;
-		}
-		
-		switch (condition) {
-			default: result = this.isEqual(left);
-		}
-		
-		if ((evaluated[ConditionNode.result] = result) ? logic === 'or' : logic === 'and') return evaluated;
-		
-		const { conditionTagNames } = ConditionNode;
-		
-		next = this.nextSibling;
-		while (!conditionTagNames.test(next.tagName) && (next = next.nextSibling));
-		
-		return next?.evaluate?.(left, evaluated) ?? evaluated;
-		
-	}
-	
-	isEqual(left) {
-		switch (this.dataset.valueType) {
-			case 'regexp': return this.valueOf().test(left);
-			default: return left === this;
-		}
-	}
-	
-	valueOf() {
-		switch (this.dataset.valueType) {
-			case 'number': return +this.textContent;
-			case 'regexp': return new RegExp(this.textContent, this.dataset?.regexpOption ?? '');
-			default: return this.textContent;
-		}
-	}
-	
-}
-class ConditionExecution extends CustomElement {
-	
-	static {
-		this.tagName = 'condition-execution';
-	}
-	
-	constructor() {
-		super();
-	}
-	
-	execute() {
-		
-		switch (this.dataset.type) {
-			case 'query-selector':
-			return this.getRootNode().querySelector(this.textContent)?.cloneNode?.(true);
-			case 'query-selector-all':
-			const nodes = this.getRootNode().querySelectorAll(this.textContent), l = nodes.length, values = [];
-			let i, v;
-			
-			i = -1;
-			for (v of nodes) values[++i] = v.cloneNode(true);
-			
-			return values;
-		}
-		
-	}
-	
-}
-class ConditionTrue extends ConditionExecution {
-	static {
-		this.tagName = 'condition-true';
-	}
-	constructor() {
-		super();
-	}
-}
-class ConditionFalse extends ConditionExecution {
-	static {
-		this.tagName = 'condition-false';
-	}
-	constructor() {
-		super();
-	}
-}
-
 class LogsNode extends CustomElement {
 	
 	static {
@@ -1362,7 +2251,7 @@ class LogNode extends CustomElement {
 	
 	static replace(node, placeholder) {
 		
-		if (!(placeholder && typeof placeholder === 'object')) return;
+		if (!placeholder || typeof placeholder !== 'object') return node;
 		
 		const { children } = node, l = children.length, { replace } = LogNode;
 		let i;
@@ -1401,6 +2290,8 @@ class LogNode extends CustomElement {
 	
 }
 
+// 入力用のカスタム要素
+
 class ConsolesNode extends CustomElement {
 	
 	static bound = {};
@@ -1417,28 +2308,60 @@ class ConsolesNode extends CustomElement {
 		
 	}
 	
+	disableConsoles(disables) {
+		
+		const consoleNodes = this.querySelectorAll('console-node'), l = consoleNodes.length;
+		let i;
+		
+		i = -1;
+		while (++i < l) consoleNodes[i].disable = disables;
+		
+	}
+	
 }
 class ConsoleNode extends CustomElement {
 	
 	static bound = {
 		
-		clickedSendButton() {
+		clickedSendButton(event) {
 			
-			this.emitInput();
+			this.emitInput(event);
 			
 		},
+		
 		pressedKey(event) {
 			
-			switch (event.key) {
-				case 'Enter': this.emitInput(); break;
+			const { key, type } = event;
+			
+			event[ConsoleNode.targetNode] = this;
+			
+			switch (type) {
+				
+				case 'keypress':
+				switch (key) {
+					case 'Enter': this.emitInput(event); break;
+				}
+				break;
+				
 			}
+			
+			this.emit('console-' + type, event);
 			
 		}
 		
 	};
+	
 	static {
 		
-		this.tagName = 'console-node';
+		this.tagName = 'console-node',
+		this.targetNode = Symbol('ConsoleNode.targetNode'),
+		
+		this.element = {},
+		
+		this.shadowElement = {
+			inputForm: '#inputform',
+			inputButton: '#send'
+		};
 		
 	}
 	
@@ -1446,29 +2369,60 @@ class ConsoleNode extends CustomElement {
 		
 		super();
 		
-		(this.input = this.q('#inputform')).addEventListener('keypress', this.pressedKey),
-		this.q('#send').addEventListener('click', this.clickedSendButton);
+		const { clickedSendButton, inputButton, inputForm, pressedKey } = this;
+		
+		this.addEvent(inputForm, 'keypress', pressedKey),
+		this.addEvent(inputForm, 'keyup', pressedKey),
+		this.addEvent(inputForm, 'keydown', pressedKey),
+		this.addEvent(inputButton, 'click', clickedSendButton);
 		
 	}
 	connectedCallback() {
 		
-		this.abortEvents();
 		
 	}
-	emitInput() {
+	disconnectedCallback() {
 		
-		this.closest('console-node')?.emit('input', this);
+		//this.abortEvents();
 		
 	}
 	
+	emitInput(targetEvent) {
+		
+		//this.closest('console-node')?.emit('input', targetEvent);
+		this.emit('console-input', targetEvent);
+		
+	}
+	
+	get disable() {
+		
+		const	components = this.qq('input, button'), l = components.length;
+		let i;
+		
+		i = -1;
+		while (++i < l && components[i].hasAttribute('disable'));
+		
+		return i === l;
+		
+	}
+	set disable(v) {
+		
+		const	components = this.qq('input, button'), l = components.length,
+				method = (v ? 'set' : 'rmeove') + 'Attribute';
+		let i;
+		
+		i = -1;
+		while (++i < l) components[i][method]('disable', '');
+		
+	}
 	get value() {
 		
-		return this.input.value;
+		return this.inputForm.value;
 		
 	}
 	set value(v) {
 		
-		this.input.value = v;
+		this.inputForm.value = v;
 		
 	}
 	
@@ -1763,8 +2717,6 @@ defineCustomElements(
 	DisplayNode,
 	DialogNode,
 	SpriteNode,
-	ScenesNode,
-	SceneNode,
 	LogsNode,
 	LogsContainer,
 	LogNode,
@@ -1785,6 +2737,15 @@ defineCustomElements(
 	ConditionTrue,
 	ConditionFalse,
 	
-	MeasureBox
+	MeasureBox,
+	
+	SNode,
+	//SContainer,
+	//ScenarioNode,
+	//SceneNode,
+	
+	SP,
+	SHandle,
+	STimeout,
 	
 );
