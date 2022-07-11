@@ -143,27 +143,6 @@ class Game {
 	
 	static executor = {
 		
-		//create(type, property, numbers) {
-		//	
-		//	const outputs = [], { gods } = this.world;
-		//	let i,oi, v;
-		//	
-		//	oi = -1;
-		//	for (v of gods) {
-		//		
-		//		i = -1, this.world.object[type] || (this.world.object[type] = new Set());
-		//		while (++i < numbers) this.world.object[type].add(v.create(type, property));
-		//		
-		//		outputs[++oi] = `created ${numbers} ${type}(s).`;
-		//		
-		//	}
-		//	
-		//	this.world.job();
-		//	
-		//	return outputs;
-		//	
-		//},
-		
 		browse(type) {
 			
 			const contents = [], { isNotLog } = Game;
@@ -447,132 +426,121 @@ class SubscriptionNode extends CustomElement {
 	}
 	
 }
-// SceneNode と、それに内包されることが期待されるカスタム要素のすべてが継承する基底クラス。
-// for await ...of... に指定することで、指定した要素とその子孫要素が実装するメソッド play を再帰し、また同期して実行する。
-// メソッド play は Promise を含む任意の戻り値を指定可能だが、その戻り値が処理に反映されることはない。
-// ただし、Promise が返された場合は、その Promise の解決を待ってから、次の実行に移る。
-// play の実装は必須でもなく、その場合は戻り値が非 Promise の時と同様に即座に次の要素の play を実行する。
-// イメージとしては、<a><b></b><c></c></a> だった場合、a の play を実行すると、
-// その play が返す Promise の解決後、a の子要素 b の play を自動で実行し、
-// 同様にそれが返す Promise の解決後、隣の c の play を実行して、解決後に再帰を終える。
 
-// Proxy を継承するこのオブジェクトのコンストラクターの第一引数に与えられる target は、Node を継承していることと、
-// get target.constructor[ScriptIterator.iteratorName] と、その値が示すインスタンスのプロパティが列挙可能な値を返す必要がある。
-// ただし、Node を継承してさえいれば、列挙可能値はその子要素が既定値として使われる。
-//class ScriptIterator {
-//	
-//	static get(target, property, receiver) {
-//		
-//		return property === 'proxied' ? this.proxied : property in target ? Reflect.get(...arguments) : this[property];
-//		
-//	}
-//	
-//	static {
-//		
-//		this[this.iteratorName = Symbol('ScriptIterator.iteratorName')] = 'children',
-//		
-//		this.play = Symbol('ScriptIterator.play'),
-//		
-//		this[this.handlerName = Symbol.for(this.handlerSymbolKey = 'ScriptIterator.iteratorName')] = 'play';
-//		
-//	}
-//	
-//	constructor(target) {
-//		
-//		//super(target, ScriptProxy);
-//		
-//		this.proxied = new Proxy(target, ScriptIterator);
-//		
-//	}
-//	
-//	[Symbol.keyFor(ScriptIterator.handlerSymbolKey)]() {
-//		
-//		return new Promise(async rs => {
-//				
-//				await this?.[this.handlerName]?.();
-//				
-//				if (Symbol.asyncIterator in this) for await (const v0 of this);
-//					else for (const v of this.children) for await (const v0 of new ScriptIterator(v));
-//				
-//			});
-//		
-//	}
-//	
-//	*[Symbol.iterator]() {
-//		
-//		for (const v of this[this.iteratorName]) yield v;
-//		
-//	}
-//	async* [Symbol.asyncIterator]() {
-//		
-//		const { play } = ScriptIterator;
-//		
-//		for (const v of this) await v?.[play]?.(), yield v;
-//		
-//	}
-//	
-//	get iteratorName() {
-//		
-//		return this.constructor[ScriptIterator.iteratorName] || ScriptIterator[ScriptIterator.iteratorName];
-//		
-//	}
-//	get handlerName() {
-//		
-//		return this.constructor[ScriptIterator.handlerName] || ScriptIterator[ScriptIterator.handlerName];
-//		
-//	}
-//	
-//}
-
-// SNode と、その子要素を指定して実行される Proxy.prototype.constuctor の第二引数 handler に与えられるオブジェクト。
-// コンストラクターは存在せず、静的プロパティ、メソッドだけが存在しない。上記の要素の特定のメソッドを再帰して、同期的に順次実行する機能を提供する。
+// AppNode.prototype.play が実行された時に、
+// そこで選択される要素を第一引数 target に指定して作成される Proxy の第二引数 handler に与えられるオブジェクト。
+// コンストラクターは存在せず、静的プロパティ、メソッドを含め、このオブジェクトを独立して使用することは想定していない。
+// このオブジェクトは、Proxy を通じて、target の @@iterator, @@asyncIterator をトラップし、
+// target がそれらのプロパティを持たない場合、代わりにその機能を提供することを目的としている。
+// @@asyncIterator をトラップされた要素は、再帰してそのすべての子要素にも同様の Proxy を作成し、@@asyncIterator を実行する。
+// これにより、そうすることを想定していない要素（例えばビルトインのもの）も含め、
+// すべての要素に暗黙的かつ非破壊的に同期、非同期反復可能オブジェクトとしての機能を与え、また振舞わせることが可能になる。
+// target は、再帰前に任意に実装されたメソッド target.prototype.play の実行を試みる。
+// このメソッドの実行スコープは target ではなく、それを指定して作られた Proxy になる。
+// これは通常問題になることはないが、Proxy を通じて target のプロトタイプチェーンを辿る処理を行なう関数を取得して実行した場合、
+// その関数の実行中にエラーが発生する可能性がある。これは例えば各種インターフェースを継承する HTML 要素で起きる可能性が高い。
+// この問題に対応するために、このオブジェクトでは、自身のプロパティではないプロパティが持つ関数を返す際、
+// それを Function.prototype.apply(target, arguments) で実行する別の関数を返すようにしている。
+// これにより、Proxy を使う処理側では、この問題を意識せずにプロパティの関数を実行することができるが、
+// 一方でその関数がジェネレーター関数や非同期関数だった場合、状況によっては対応を迫られるケースが出てくるかもしれない。
+// play には任意の戻り値が指定できるが、戻り値が後続の処理に影響ないし反映されることはない。
+// ただし、Promise を戻り値にした場合は、その解決を待ってから子要素への再帰を開始する。
 class ScriptProxy {
 
 	static {
+		
+		this.asyncValueOf = Symbol('ScriptProxy.asyncValueOf'),
 		
 		this[this.iteratorName = Symbol('ScriptProxy.iteratorName')] = 'children',
 		
 		this[this.handlerName = Symbol('ScriptProxy.iteratorName')] = 'play',
 		
-		this[this.callbackName = Symbol('ScriptProxy.callbackName')] = proxied => {
+		this[this.callbackName = Symbol('ScriptProxy.callbackName')] = async proxied => {
 			
-			return new Promise(async rs => {
-					
-					await proxied?.[proxied.handlerName]?.();
-					
-					for await (const v of proxied);
-					
-					rs();
-					
-				});
+			const { callbackName, fulfill, handlerName } = proxied;
+			
+			await proxied?.[handlerName]?.();
+			
+			switch (fulfill) {
+				
+				case 'all': case 'all-settled': case 'any': case 'race':
+				await Promise[fulfill === 'all-settled' ? 'allSettled' : fulfill](proxied[ScriptProxy.asyncValueOf]);
+				break;
+				
+				default:
+				for await (const v of proxied);
+				
+			}
 			
 		};
 		
 	};
 	
+	// それぞれのメソッド内で、this は ScriptProxy、target は Proxy の第一引数に与えたオブジェクト、
+	// receiver は Proxy のコンストラクターで作成したインスタンスを示す。
+	
 	static get(target, property, receiver) {
 		
 		switch (property) {
 			
-			case 'iteratorName': case 'handlerName':
+			case ScriptProxy.asyncValueOf:
+			
+			const { callbackName } = ScriptProxy, promises = [];
+			let i,v;
+			
+			i = -1;
+			for (const proxied of receiver)
+				promises[++i] = (v = proxied?.[callbackName]?.(proxied)) instanceof Promise || Promise.resolve(v);
+			
+			return promises;
+			
+			case 'fulfill':
+			return target.getAttribute('fulfill');
+			
+			case 'iteratorName': case 'handlerName': case 'callbackName':
 			return (property = this[property]) in target.constructor ?	target.constructor[property] :
 																							this[property];
 			
 		}
 		
-		// getter であるプロパティから値を取得する時に、Reflect.get の第三引数に receiver を指定すると、
-		// TypeError: 'get プロパティ名' called on an object that does not implement interface Element.
-		// が発生する。そのため、receiver を指定せずに実行するように変更したが、
-		// エラーの原因がよくわかっていないため、この対応に問題がないかどうかは不明。
+		// *** 以下の説明は非常に曖昧な理解と不完全な検証に基づいて書かれた考察で、誤りを含む可能性が高い ***
+		// property が示す target のプロパティの値が Function だった場合、
+		// その関数内で target が継承するインターフェースを使う処理がある場合、
+		// 例えば HTMLDivElement で、それが継承するインターフェース Element が定義する children を取得した場合、
+		// 関数の実行対象が this などの Proxy、つまりこの get の実行元であれば、その処理はエラーを起こす。
+		// このエラーの原因は特定できないが、内部で Proxy を taget そのものとして扱おうとしている可能性が高い。
+		// その関数がシステムが定義する関数だった場合、現状ではこのエラーに対応する方法が見つからない。
+		// そのため、プロパティが返す値が関数で、かつそれが target の自身のプロパティではなく、
+		// そのプロトタイプチェーン上に存在する場合、その関数はシステム上の関数である可能性が高いものとして、
+		// その関数を target で実行した戻り値を返す匿名関数でラップして返すようにしている。
+		// これは戻り値だけ見れば、target を実行元にした場合と同じ戻り値を得られるが、
+		// プロパティが示す関数が非同期関数やジェネレーター関数だった場合、
+		// 呼び出し元が存在する処理内で、それを想定した処理と不整合を引き起こす可能性が考えられるが、
+		// 一方で yield* などで対応できる余地も残されているものと思われる。（未検証）
 		
-		//return property in target ? Reflect.get(...arguments) : this[property];
-		return property in target ? Reflect.get(target, property) : this[property];
+		return	target.hasOwnProperty(property) ?
+						Reflect.get(...arguments) :
+						property in target ?
+							typeof (property = target[property]) === 'function' ?
+								function () { return property.apply(target, arguments) } : property :
+							this[property];
 		
 	}
 	
-	static apply(target, thisArg, argumentsList) {
+	static set(target, property, value) {
 		
-		return Reflect.apply(...arguments);
+		switch (property) {
+			
+			case 'fulfill':
+			target.setAttribute('fulfill', v);
+			return true;
+			
+			default:
+			return Relflect.set(...arguments);
+			
+		}
+		
+		return false;
 		
 	}
 	
@@ -591,10 +559,21 @@ class ScriptProxy {
 	}
 	
 }
-//coco 最小限の構成から少しずつテストしていく
+
 class SNode extends SubscriptionNode {
 	
 	static bound = {
+		
+	};
+	
+	static acc = {
+		
+		content(name, oldValue, newValue) {
+			
+			this.setContent(newValue);
+			
+		}
+		
 	};
 	
 	static {
@@ -614,6 +593,11 @@ class SNode extends SubscriptionNode {
 		this.setContent();
 		
 	}
+	attributeChangedCallback(name, oldValue, newValue) {
+		
+		this.acc?.[name]?.(name, oldValue, newValue);
+		
+	}
 	
 	play() {
 		
@@ -621,60 +605,20 @@ class SNode extends SubscriptionNode {
 		
 	}
 	
-	//[SubscriptionNode.play]() {
-	//	
-	//	return new Promise(async rs => {
-	//			
-	//			await this?.play?.();
-	//			
-	//			for (const v of this.children) {
-	//				
-	//				const child = v instanceof ScriptElement ? v : new Proxy(v, )
-	//				
-	//				for await (const v0 of v);
-	//				
-	//			}
-	//			
-	//		});
-	//	
-	//}
-	//
-	//*[Symbol.iterator]() {
-	//	
-	//	for (const v of this.assignedNodes) yield v;
-	//	
-	//}
-	//async* [Symbol.asyncIterator]() {
-	//	
-	//	const { play } = SubscriptionNode;
-	//	
-	//	for (const v of this) await v?[play]?.(), yield v;
-	//	
-	//}
-	//[Symbol.asyncIterator]() {
-	//	
-	//	const	snodes = this.q(this.__.iteratorQuery)?.assignedNodes?.(), l = snodes?.length ?? 0,
-	//			next = detail => {
-	//					
-	//					const	snode = l && snodes[i], done = ++i >= l;
-	//					
-	//					return	snode?.play?.(detail)?.then?.(value => ({ value, done })) ||
-	//									Promise.resolve({ value: snodes, done });
-	//					
-	//				};
-	//	let i = 0;
-	//	
-	//	return { next };
-	//	
-	//}
-	
-	setContent(selector = this.content, appends) {
+	setContent(selector = this.content, appends = this.appends) {
+		
+		if (selector !== this.content) {
+			
+			this.content = selector;
+			return;
+			
+		}
+		
+		appends || this.removeContent();
 		
 		const contents = document.querySelectorAll(selector), l = contents.length;
 		
 		if (!l) return;
-		
-		appends && this.removeContent();
 		
 		const contentNode = document.createElement('div');
 		let i;
@@ -719,293 +663,18 @@ class SNode extends SubscriptionNode {
 		this.setAttribute('content', v);
 		
 	}
-	
+	get appends() {
+		
+		return this.getAttribute('appends');
+		
+	}
+	set appends(v) {
+		
+		this[(v === false ? 'remove' : 'set') + 'Attribute']('appends', v);
+		
+	}
 	
 }
-//class SceneNode extends CustomElement {
-//	
-//	static bound = {
-//	};
-//	
-//	static {
-//		
-//		this.tagName = 'scene-node';
-//		
-//	}
-//	
-//	constructor() {
-//		
-//		super(),
-//		
-//		this.setContent();
-//		
-//	}
-//	
-//	async play() {
-//		
-//		const	scenario = this.q('slot[name="scenario"]')?.assignedNodes()[0],
-//				played = scenario?.play?.();
-//		
-//		return typeof playThen === 'function' ? new Promise(rs => played.then(value => rs(value))) : Promise.resolve(scenario);
-//		
-//	}
-//	
-//	setContent(selector = this.content) {
-//		
-//		const contents = [ ...document.querySelectorAll(selector) ], l = contents.length;
-//		
-//		if (!l) return;
-//		
-//		const	contentNode = document.createElement('div'),
-//				assignedNodes = this.q('slot[name="content"]')?.assignedNodes?.();
-//		let i;
-//		
-//		if (assignedNodes) for (const v of assignedNodes) v.remove();
-//		
-//		i = -1, contentNode.slot = 'content';
-//		while (++i < l) contents[i] = contents[i].content.cloneNode(true);
-//		
-//		this.append(...contents);
-//		
-//	}
-//	
-//	get content() {
-//		
-//		return this.getAttribute('content');
-//		
-//	}
-//	set content(v) {
-//		
-//		this.setAttribute('content', v);
-//		
-//	}
-//
-//	
-//}
-//class ScenarioNode extends CustomElement {
-//	
-//	static bound = {
-//		
-//	};
-//	
-//	static {
-//		
-//		this.tagName = 'scenario-node';
-//		
-//	}
-//	
-//	constructor() {
-//		
-//		super(),
-//		
-//		this.setContent();
-//		
-//	}
-//	
-//	async play() {
-//		
-//		return new Promise(async rs => {
-//			
-//			const scenarios = this.q('slot[name="container"]')?.assignedNodes?.(), l = scenarios.length;
-//			let i, scenario;
-//			
-//			i = -1;
-//			while (++i < l) {
-//				hi(scenarios[i]);
-//				if ((scenario = scenarios[i]) instanceof SContainer) for await (const v of scenario);
-//				else {
-//					
-//					await scenario?.play();
-//					
-//				}
-//			}
-//			
-//			rs();
-//			
-//		});
-//		
-//	}
-//	
-//	setContent(selector = this.content) {
-//		
-//		const contents = [ ...document.querySelectorAll(selector) ], l = contents.length;
-//		
-//		if (!l) return;
-//		
-//		const	contentNode = document.createElement('div'),
-//				assignedNodes = this.q('slot[name="content"]')?.assignedNodes?.();
-//		let i;
-//		
-//		if (assignedNodes) for (const v of assignedNodes) v.remove();
-//		
-//		i = -1, contentNode.slot = 'content';
-//		while (++i < l) (contents[i] = contents[i].content.cloneNode(true)).slot = 'scenario';
-//		
-//		this.append(...contents);
-//		
-//	}
-//	
-//	get content() {
-//		
-//		return this.getAttribute('content');
-//		
-//	}
-//	set content(v) {
-//		
-//		this.setAttribute('content', v);
-//		
-//	}
-//	
-//}
-//class SContainer extends ScriptNode {
-//	
-//	static bound = {
-//	};
-//	
-//	static {
-//		
-//		this.tagName = 's-container',
-//		this.slotName = 'container';
-//		
-//	}
-//	
-//	constructor() {
-//		
-//		super();
-//		
-//	}
-//	
-//	async play() {
-//		
-//		return new Promise(async rs => {
-//				
-//				const scripts = this.qq('slot[name="scripts"]').assignedNodes(), l = scripts.length;
-//				let i, script;
-//				
-//				i = -1;
-//				while (++i < l) {
-//					
-//					if ((script = scripts[i]) instanceof SNode) for await (const v of script);
-//					else {
-//						
-//						await script?.play();
-//						
-//					}
-//					
-//					
-//				}
-//				
-//				rs();
-//				
-//			});
-//		
-//	}
-//	
-//}
-
-//coco レイヤー的な要素をひとつにして再帰して使うようにする。
-//class SceneNode extends CustomElement {
-//	
-//	static bound = {
-//	};
-//	
-//	static {
-//		
-//		this.tagName = 'scene-node';
-//		
-//	}
-//	
-//	constructor() {
-//		
-//		super();
-//		
-//	}
-//
-//	
-//}
-//class ScenarioNode extends CustomElement {
-//	
-//	static bound = {
-//		
-//	};
-//	
-//	static {
-//		
-//		this.tagName = 'scenario-node';
-//		
-//	}
-//	
-//	constructor() {
-//		
-//		super();
-//		
-//	}
-//	
-//}
-//class SContainer extends ScriptNode {
-//	
-//	static bound = {
-//	};
-//	
-//	static {
-//		
-//		this.tagName = 's-container',
-//		this.slotName = 'container';
-//		
-//	}
-//	
-//	constructor() {
-//		
-//		super();
-//		
-//	}
-//	
-//	async play() {
-//		
-//		return new Promise(async rs => {
-//				
-//				const scripts = this.qq('slot[name="scripts"]').assignedNodes(), l = scripts.length;
-//				let i, script;
-//				
-//				i = -1;
-//				while (++i < l) {
-//					
-//					if ((script = scripts[i]) instanceof SNode) for await (const v of script);
-//					else {
-//						
-//						await script?.play();
-//						
-//					}
-//					
-//					
-//				}
-//				
-//				rs();
-//				
-//			});
-//		
-//	}
-//	
-//}
-//class SceneNode extends ScriptElement {
-//	
-//	static bound = {
-//	};
-//	
-//	static {
-//		
-//		this.tagName = 'scene-node';
-//		
-//	}
-//	
-//	constructor() {
-//		
-//		super();
-//		
-//	}
-//
-//	
-//}
 
 class AppNode extends CustomElement {
 	
@@ -1069,12 +738,6 @@ class AppNode extends CustomElement {
 	}
 	
 	async play() {
-		
-		//const scenes = this.qq('#scenes > scene-node'), l = scenes.length;
-		//let i;
-		//
-		//i = -1;
-		//while (++i < l) await scenes[i].play();
 		
 		for await (const v of new Proxy(this, ScriptProxy));
 		
@@ -1172,22 +835,6 @@ class ConditionNode extends SubscriptionNode {
 			
 			this.updateHint();
 			
-		},
-		
-		// 非束縛関数だと Proxy から呼び出された時に this.cloneNode の実行に失敗するため、
-		// this の参照先を Proxy 越しではなくインスタンスに直に固定するために束縛している。
-		// cloneNode 以外のプロパティやメソッドは束縛しなくてもアクセスができるため、
-		// ビルトインオブジェクト（特に DOM）の特定のプロパティ、メソッドには特殊な仕様があるのかもしれない。
-		play() {
-			
-			return new Promise (async rs => {
-					
-					await this.evaluate(),
-					
-					rs();
-					
-				});
-			
 		}
 		
 	};
@@ -1255,6 +902,18 @@ class ConditionNode extends SubscriptionNode {
 		while (++i < l) types.add(conditions[i].dataset?.type ?? 'input');
 		
 		this.dataset.has = [ ...types ].join(' ');
+		
+	}
+	
+	play() {
+		
+		return new Promise (async rs => {
+				
+				await this.evaluate(),
+				
+				rs();
+				
+			});
 		
 	}
 	
@@ -1689,51 +1348,6 @@ class ScriptNode extends SubscriptionNode {
 	}
 	
 }
-//class SNode extends ScriptNode {
-//	
-//	static bound = {
-//		
-//		
-//	};
-//	
-//	static {
-//		
-//		this.tagName = 's-node',
-//		this.slotName = 'scripts';
-//		
-//	}
-//	
-//	constructor() {
-//		
-//		super();
-//		
-//	}
-//	
-//	async play() {
-//		
-//		return new Promise(async rs => {
-//				
-//				const scripts = this.q('slot[name="scripts"]')?.assignedNodes?.(), l = scripts?.length;
-//				let i,i0,l0, elements, v;
-//				
-//				i = -1;
-//				while (++i < l) {
-//					
-//					i0 = -1, l0 = (elements = scripts[i].children).length;
-//					while (++i0 < l0) {
-//						(v = elements[i0]?.play?.()) instanceof Promise &&
-//							await v.then(v => v instanceof Node && this.append(v))
-//					}
-//					
-//				}
-//				
-//				rs();
-//				
-//			});
-//		
-//	}
-//	
-//}
 
 class DialogNode extends CustomElement {
 	

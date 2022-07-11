@@ -2,7 +2,7 @@
 <html lang="ja">
 	<head>
 		<meta chatset="utf-8">
-		<title>Game</title>
+		<title>Tutorial for Strings</title>
 		<link rel="stylesheet" href="default.css">
 		<script src="utils.js"></script>
 		<script type="module" src="main.js"></script>
@@ -33,22 +33,25 @@
 		</template>
 		
 		<template id="scene-prologue-0" data-css="default.css">
+			<article slot="data"></article>
 			<article slot="content">
-				
-				<condition-node type="input-standby">
-					<condition-evaluation data-type="input" data-value-type="regexp" data-condition="equal">^\s*$</condition-evaluation>
-					<condition-true data-name="dialogs" data-type="query-selector-all">#dialogs .d-0</condition-true>
-					<condition-false data-name="dialogs" data-type="query-selector-all">#dialogs .d-0</condition-false>
-				</condition-node>
-				
-				<s-p>
-					時は200X年
-				</s-p>
-				<s-timeout value="1000"></s-timeout>
-				<s-p>
-					地球上で起きた最終核戦争により人類の文明は消滅した。
-				</s-p><!---->
-				
+				<div>
+					
+					<condition-node type="input-standby">
+						<condition-evaluation data-type="input" data-value-type="regexp" data-condition="equal">^\s*$</condition-evaluation>
+						<condition-true data-name="dialogs" data-type="query-selector-all">#dialogs .d-0</condition-true>
+						<condition-false data-name="dialogs" data-type="query-selector-all">#dialogs .d-0</condition-false>
+					</condition-node>
+					
+					<s-p>
+						時は200X年
+					</s-p>
+					<s-timeout value="1000"></s-timeout>
+					<s-p>
+						地球上で起きた最終核戦争により人類の文明は消滅した。
+					</s-p>
+					
+				</div>
 			</article>
 		</template>
 		
@@ -56,42 +59,10 @@
 			<slot name="content"></slot>
 		</template>
 		
-		<!--<template id="scene-node" data-css="default.css">
-			<slot name="content"></slot>
-		</template>-->
-		
-		<!--<template id="s-node" data-css="default.css">
-			<slot name="content"></slot>
+		<template id="scenes-node" data-css="default.css">
+			<div>
+			</div>
 		</template>
-		
-		<template id="scripts-prologue-0" data-css="default.css">
-			<s-handle slot="content" type="input" operation="disable">
-				<s-node content="#script-prologue-0"></s-node>
-			</s-handle>
-		</template>
-		
-		<template id="s-container" data-css="default.css">
-			<slot name="content"></slot>
-		</template>
-		
-		<template id="scenario-prologue-0">
-			<s-container slot="content" content="#scripts-prologue-0"></s-container>
-		</template>
-		
-		<template id="scenario-node" data-css="default.css">
-			<slot name="content"></slot>
-		</template>
-		
-		<template id="scene-prologue-0" data-css="default.css">
-			<scenario-node content="#scenario-prologue-0"></scenario-node>
-		</template>
-		
-		<template id="scene-node" data-css="default.css">
-			<section id="characters">
-				<slot name="characters"></slot>
-			</section>
-			<slot name="content"></slot>
-		</template>-->
 		
 		<template id="logs-node" data-css="default.css"><div></div></template>
 		<template id="logs-container" data-css="default.css"><div></div></template>
@@ -152,11 +123,6 @@
 			<slot name="sprite"></slot>
 		</template>
 		
-		<template id="scenes-node" data-css="default.css">
-			<div>
-			</div>
-		</template>
-		
 		<template id="character-node" data-css="default.css">
 			<slot name="metadata"></slot>
 			<slot name="conditions"></slot>
@@ -166,12 +132,6 @@
 		<template id="app-node" data-css="default.css">
 			
 			<div>
-				<!--<resources-node>
-					<resouce-node></resouce-node>
-				</resources-node>
-				<scenes-node>
-					<scene-node></scene-node>
-				</scenes-node>-->
 				<div id="data"></div>
 				<div id="scenes">
 					<s-node content="#scene-prologue-0"></s-node>
