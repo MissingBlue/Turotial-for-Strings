@@ -427,6 +427,48 @@ class SubscriptionNode extends CustomElement {
 	
 }
 
+class AppProxyHandler {
+	
+	static get() {
+		
+		return this.getFinally(...arguments);
+		
+	}
+	
+	static getFinally(target, property, receiver) {
+		
+		return	target.hasOwnProperty(property) ?
+						Reflect.get(...arguments) :
+						property in target ?
+							typeof (property = target[property]) === 'function' ?
+								// 以下の処理は場当たり的な対応で、処理できる理由もすべての状況において正しいかどうかも確認できていない。
+								// 意図としては、get で呼び出された関数を Proxy でラップし
+								// その関数のプロパティを取得する場合はその Proxy 越しに、
+								// 関数本体を実行する場合は、それをトラップして、get を実行した Proxy の target を thisArg にして実行することで、
+								// 関数のプロパティを取得する操作と、関数本体を実行する時とで、その実行元を切り替える処理を行なっている。
+								// これは、例えば target.constructor.a で、constructor は関数なので、
+								// Proxy でラップしなければ、a は、constructor をラップする匿名関数のプロパティとして取得される。
+								// 一方、constructor をそのまま返すと、constructor を関数として実行した時に、
+								// receiver.constructor() と言う形になり、constructor 内の処理によっては不整合が起きることがある。
+								// これは construtor 特有の問題と言う訳ではなく、すべての関数に起こり得る状況で、あくまで一例である。
+								// この二つの状況に対応するために、関数本体のあるべき実行状況をクロージャによって保存した上で Proxy から呼びだせるようにし、
+								// 一方で関数本体が持つプロパティは関数そのもののプロパティとして返すようにしている。
+								// 可能であればこの Proxy を Proxy.revocable から作成して、本体が revoke されたら同様に revoke するようにしたい。
+								new Proxy(
+									property,
+									{
+										apply(f, thisArg, args) {
+											return f === property ? property.apply(target, args) : Reflect.apply(...arguments);
+										}
+									}
+								) :
+								property :
+							this[property];
+		
+	}
+	
+}
+
 // AppNode.prototype.play が実行された時に、
 // そこで選択される要素を第一引数 target に指定して作成される Proxy の第二引数 handler に与えられるオブジェクト。
 // コンストラクターは存在せず、静的プロパティ、メソッドを含め、このオブジェクトを独立して使用することは想定していない。
@@ -445,26 +487,30 @@ class SubscriptionNode extends CustomElement {
 // 一方でその関数がジェネレーター関数や非同期関数だった場合、状況によっては対応を迫られるケースが出てくるかもしれない。
 // play には任意の戻り値が指定できるが、戻り値が後続の処理に影響ないし反映されることはない。
 // ただし、Promise を戻り値にした場合は、その解決を待ってから子要素への再帰を開始する。
-class ScriptProxy {
-
+class ScriptProxyHandler {
+	
 	static {
 		
-		this.asyncValueOf = Symbol('ScriptProxy.asyncValueOf'),
+		this.asyncValueOf = Symbol('ScriptProxyHandler.asyncValueOf'),
 		
-		this[this.iteratorName = Symbol('ScriptProxy.iteratorName')] = 'children',
+		this[this.iteratorName = Symbol('ScriptProxyHandler.iteratorName')] = 'children',
 		
-		this[this.handlerName = Symbol('ScriptProxy.iteratorName')] = 'play',
+		this[this.handlerName = Symbol('ScriptProxyHandler.handlerName')] = 'play',
 		
-		this[this.callbackName = Symbol('ScriptProxy.callbackName')] = async proxied => {
+		this.noRecursion = Symbol('ScriptProxyHandler.noRecursion'),
+		
+		this[this.callbackName = Symbol('ScriptProxyHandler.callbackName')] = async proxied => {
 			
 			const { callbackName, fulfill, handlerName } = proxied;
 			
-			await proxied?.[handlerName]?.();
+			await proxied?.[handlerName]?.(proxied);
+			
+			if (proxied.constructor[ScriptProxyHandler.noRecursion]) return;
 			
 			switch (fulfill) {
 				
 				case 'all': case 'all-settled': case 'any': case 'race':
-				await Promise[fulfill === 'all-settled' ? 'allSettled' : fulfill](proxied[ScriptProxy.asyncValueOf]);
+				await Promise[fulfill === 'all-settled' ? 'allSettled' : fulfill](proxied[ScriptProxyHandler.asyncValueOf]);
 				break;
 				
 				default:
@@ -472,20 +518,22 @@ class ScriptProxy {
 				
 			}
 			
-		};
+		},
+		
+		this.getFinally = AppProxyHandler.getFinally;
 		
 	};
 	
-	// それぞれのメソッド内で、this は ScriptProxy、target は Proxy の第一引数に与えたオブジェクト、
+	// それぞれのメソッド内で、this は ScriptProxyHandler、target は Proxy の第一引数に与えたオブジェクト、
 	// receiver は Proxy のコンストラクターで作成したインスタンスを示す。
 	
 	static get(target, property, receiver) {
 		
 		switch (property) {
 			
-			case ScriptProxy.asyncValueOf:
+			case ScriptProxyHandler.asyncValueOf:
 			
-			const { callbackName } = ScriptProxy, promises = [];
+			const { callbackName } = ScriptProxyHandler, promises = [];
 			let i,v;
 			
 			i = -1;
@@ -518,12 +566,34 @@ class ScriptProxy {
 		// 呼び出し元が存在する処理内で、それを想定した処理と不整合を引き起こす可能性が考えられるが、
 		// 一方で yield* などで対応できる余地も残されているものと思われる。（未検証）
 		
-		return	target.hasOwnProperty(property) ?
-						Reflect.get(...arguments) :
-						property in target ?
-							typeof (property = target[property]) === 'function' ?
-								function () { return property.apply(target, arguments) } : property :
-							this[property];
+		return this.getFinally(...arguments);
+		
+		//return	target.hasOwnProperty(property) ?
+		//				Reflect.get(...arguments) :
+		//				property in target ?
+		//					typeof (property = target[property]) === 'function' ?
+		//						// 以下の処理は場当たり的な対応で、処理できる理由もすべての状況において正しいかどうかも確認できていない。
+		//						// 意図としては、get で呼び出された関数を Proxy でラップし
+		//						// その関数のプロパティを取得する場合はその Proxy 越しに、
+		//						// 関数本体を実行する場合は、それをトラップして、get を実行した Proxy の target を thisArg にして実行することで、
+		//						// 関数のプロパティを取得する操作と、関数本体を実行する時とで、その実行元を切り替える処理を行なっている。
+		//						// これは、例えば target.constructor.a で、constructor は関数なので、
+		//						// Proxy でラップしなければ、a は、constructor をラップする匿名関数のプロパティとして取得される。
+		//						// 一方、constructor をそのまま返すと、constructor を関数として実行した時に、
+		//						// receiver.constructor() と言う形になり、constructor 内の処理によっては不整合が起きることがある。
+		//						// これは construtor 特有の問題と言う訳ではなく、すべての関数に起こり得る状況で、あくまで一例である。
+		//						// この二つの状況に対応するために、関数本体のあるべき実行状況をクロージャによって保存した上で Proxy から呼びだせるようにし、
+		//						// 一方で関数本体が持つプロパティは関数そのもののプロパティとして返すようにしている。
+		//						new Proxy(
+		//							property,
+		//							{
+		//								apply(f, thisArg, args) {
+		//									return f === property ? property.apply(target, args) : Reflect.apply(...arguments);
+		//								}
+		//							}
+		//						) :
+		//						property :
+		//					this[property];
 		
 	}
 	
@@ -546,15 +616,15 @@ class ScriptProxy {
 	
 	static *[Symbol.iterator]() {
 		
-		for (const v of this[this.iteratorName]) yield new Proxy(v, ScriptProxy);
+		for (const v of this[this.iteratorName]) yield Proxy.revocable(v, ScriptProxyHandler);
 		
 	}
 	
 	static async *[Symbol.asyncIterator]() {
 		
-		const { callbackName } = ScriptProxy;
+		const { callbackName } = ScriptProxyHandler;
 		
-		for (const proxied of this) await proxied?.[callbackName]?.(proxied), yield proxied;
+		for (const { proxy, revoke } of this) await proxy?.[callbackName]?.(proxy), yield proxy, revoke();
 		
 	}
 	
@@ -582,7 +652,7 @@ class SNode extends SubscriptionNode {
 		
 		this.tagName = 's-node',
 		
-		this[ScriptProxy.iteratorName] = 'assignedNodes';
+		this[ScriptProxyHandler.iteratorName] = 'assignedNodes';
 		
 	}
 	
@@ -680,7 +750,7 @@ class AppNode extends CustomElement {
 	
 	static bound = {
 		
-		input({ target }) {
+		input({ detail: { target } }) {
 			
 			const { value } = target, inputs = value && this.parser.parse(value);
 			
@@ -702,7 +772,7 @@ class AppNode extends CustomElement {
 		
 		this.tagName = 'app-node',
 		
-		this[ScriptProxy.iteratorName] = 'scenes',
+		this[ScriptProxyHandler.iteratorName] = 'scenes',
 		
 		this.shadowElement = {
 			
@@ -739,7 +809,11 @@ class AppNode extends CustomElement {
 	
 	async play() {
 		
-		for await (const v of new Proxy(this, ScriptProxy));
+		const { proxy, revoke } = Proxy.revocable(this, ScriptProxyHandler);
+		
+		for await (const v of proxy);
+		
+		revoke();
 		
 	}
 	
@@ -827,6 +901,130 @@ class AppNode extends CustomElement {
 
 // 論理演算を表現するカスタム要素
 
+class ConditionProxyHandler {
+	
+	static {
+		
+		this[this.excludeNodes = Symbol('ConditionProxyHandler.exludeNodes')] = /^condition-(?:true|false)$/i,
+		this[this.handlerName = Symbol('ConditionProxyHandler.handlerName')] = 'evaluate',
+		
+		this[this.callbackName = Symbol('ConditionProxyHandler.callbackName')] = async (proxied, shared) => {
+			
+			//const conditioins = proxied.tagName === 'CONDITION-NODE', isOr = conditioins && proxied.logic === 'or';
+			//let isTrue;
+			//
+			//proxied[ConditionNode.shared] = shared;
+			//
+			//for await (const v of proxied) if (!conditioins || (isTrue = isOr ? v : !v)) break;
+			//
+			//if (conditioins) {
+			//	
+			//	const executions = proxied.querySelectorAll(`condition-${isOr ? isTrue : (isTrue = !!isTrue)}`);
+			//	
+			//	for await (const exec of executions) exec.execute(shared);
+			//	
+			//	return isTrue;
+			//	
+			//}
+			
+			// メソッド target.prototype[proxied.handlerName] を持たないオブジェクトはすべて true として判定する。
+			
+			return await proxied?.[proxied.handlerName]?.(shared) ?? true;
+			
+			//const evaluations = [], isOr = proxied.logic === 'or';
+			//let i;
+			//
+			//i = -1;
+			//for (const v of proxied) evaluations[++i] = v?.[callbackName]?.();
+			//
+			//if (i === -1) return true;
+			//
+			//const l = i + 1;
+			//
+			//await Promise.all(evaluations).then(evaluated => {
+			//		
+			//		i = -1;
+			//		while (++i < l && (isOr ? !evaluated[i].value : evaluated[i].value));
+			//		
+			//	}),
+			//
+			//return isOr ? i < l : i === l;
+			
+		};
+		
+		this.getFinally = AppProxyHandler.getFinally,
+		
+		this.data = new WeakMap();
+		
+	}
+	static get(target, property, receiver) {
+		
+		switch (property) {
+			
+			case 'iteratorName': case 'handlerName': case 'callbackName':
+			return (property = this[property]) in target.constructor ?	target.constructor[property] :
+																							this[property];
+			
+		}
+		
+		return this.getFinally(...arguments);
+		
+		//return	target.hasOwnProperty(property) ?
+		//				Reflect.get(...arguments) :
+		//				property in target ?
+		//					typeof (property = target[property]) === 'function' ?
+		//						new Proxy(
+		//							property,
+		//							{
+		//								apply(f, thisArg, args) {
+		//									return f === property ? property.apply(target, args) : Reflect.apply(...arguments);
+		//								}
+		//							}
+		//						) :
+		//						property :
+		//					this[property];
+		
+	}
+	static set(target, property, value, receiver) {
+		
+		switch (property) {
+			
+			case 'fulfill':
+			target.setAttribute('fulfill', value);
+			return true;
+			
+			case 'shared':
+			this.data.set(receiver, value);
+			return true;
+			
+			default:
+			return Reflect.set(...arguments);
+			
+		}
+		
+		return false;
+		
+	}
+	
+	static *[Symbol.iterator]() {
+		
+		const excludes = this[this.excludeNodes];
+		
+		for (const v of this.children) if (!excludes.test(v.tagName)) yield Proxy.revocable(v, ConditionProxyHandler);
+		
+	}
+	
+	// 子要素の条件をひとつずつ順番に評価する。特に使う状況は想定していない。
+	static async *[Symbol.asyncIterator]() {
+		
+		const	{ callbackName } = this, shared = ConditionProxyHandler.data.get(this);
+		
+		for (const { proxy, revoke } of this) yield await proxy?.[callbackName]?.(proxy, shared), revoke();
+		
+	}
+	
+}
+
 class ConditionNode extends SubscriptionNode {
 	
 	static bound = {
@@ -844,7 +1042,9 @@ class ConditionNode extends SubscriptionNode {
 		{
 			to: 'app-node',
 			type: 'app-input',
-			handler({ inputs }) {
+			handler({ detail: { target, inputs } }) {
+				
+				if (!target.matches(this.selector)) return;
 				
 				const l = inputs.length;
 				let i;
@@ -859,16 +1059,24 @@ class ConditionNode extends SubscriptionNode {
 	
 	static {
 		
+		this[ScriptProxyHandler.noRecursion] = true,
+		
 		this.tagName = 'condition-node',
 		
 		this.result = Symbol('ConditionNode.result'),
+		this.input = Symbol('ConditionNode.input'),
+		this.anon = Symbol('ConditionNode.anon'),
 		
 		this.conditionNodes = [ 'condition-node', 'condition-evaluation' ],
 		
 		this.conditionTagNames = new RegExp(`^(?:${this.conditionNodes.join('|')})$`, 'i'),
 		this.conditionNodesSelector = `:scope > ${this.conditionNodes.join(',')}`,
 		
-		this.mutatedChildListOption = { childList: true };
+		this.mutatedChildListOption = { childList: true },
+		
+		this.iteratorName = 'conditions',
+		
+		this.callbackName = 'evaluate';
 		
 	}
 	
@@ -895,155 +1103,231 @@ class ConditionNode extends SubscriptionNode {
 	updateHint() {
 		
 		const	conditions = this.querySelectorAll(ConditionNode.conditionNodesSelector), l = conditions.length,
-				types = new Set();
-		let i;
+				types = [];
+		let i,i0, v;
 		
-		i = -1;
-		while (++i < l) types.add(conditions[i].dataset?.type ?? 'input');
+		i = i0 = -1;
+		while (++i < l) types.indexOf(v = conditions[i].dataset?.type ?? 'input') === -1 || (types[++i0] = v);
 		
-		this.dataset.has = [ ...types ].join(' ');
-		
-	}
-	
-	play() {
-		
-		return new Promise (async rs => {
-				
-				await this.evaluate(),
-				
-				rs();
-				
-			});
+		this.dataset.has = types.join(' ');
 		
 	}
 	
-	evaluate(input, evaluated) {
+	async play() {
 		
-		if (input === undefined && this.getAttribute('type') === 'input-standby') {
+		await this.activate();
+		
+	}
+	
+	async execution() {
+		
+		await this.activate();
+		
+	}
+	
+	async activate(input) {
+		
+		if (input === undefined && this.getAttribute('type') === 'input-standby' && !this.subscribes) {
 			
 			this.subscribes = true, this.subscribe();
 			
-			return;
-			
-		}
+		} else await this.evaluate(input);
 		
-		(evaluated && typeof evaluated === 'object') || (evaluated = {});
+	}
+	async evaluate(shared) {
 		
-		const	{ result: symResult } = ConditionNode,
-				result =
-					this.querySelector(':is(condition-evaluation, condition-node):first-child')?.evaluate?.(input, evaluated),
-				executions = this.querySelectorAll(`:scope > condition-${result[symResult]}`), l = executions.length;
-		let next;
+		(shared && typeof shared === 'object') ||
+			(shared = { [ConditionNode[typeof shared === 'string' ? 'input' : 'anon']]: shared });
 		
-		evaluated = { ...evaluated, [symResult]: result[symResult] };
+		const { proxy, revoke } = Proxy.revocable(this, ConditionProxyHandler), isOr = proxy.logic === 'or';
+		let isTrue;
 		
-		if (l) {
-			
-			let i, exec;
-			
-			i = -1;
-			while (++i < l) evaluated[(exec = executions[i]).dataset.name] = exec.execute();
-			
-			this.emit(result, evaluated);
-			
-		}
+		proxy.shared = shared;
 		
-		if (result) {
-			
-			const { conditionTagNames } = ConditionNode;
-			
-			next = this.nextSibling;
-			while (!conditionTagNames.test(next.tagName) && (next = next.nextSibling));
-			
-		}
+		for await (const evaluated of proxy) if (isTrue = isOr ? evaluated : !evaluated) break;
 		
-		return next?.evaluate?.(input, evaluated) ?? evaluated;
+		const executions = proxy.querySelectorAll(`condition-${isOr ? isTrue : (isTrue = !!isTrue)}`);
+		
+		for await (const exec of executions) exec.execute(shared);
+		
+		revoke();
+		
+		return isTrue;
+		//
+		
+		//const	{ conditions, logic } = this, isOr = logic.toLowerCase() === 'or',
+		//		results = [], app = this.composeClosest('app-node');
+		//let i, l;
+		//
+		//i = -1;
+		//for (const v of conditions) evaluations[++i] = v?.evaluate?.(app, evaluated);
+		//
+		//await Promise.all(conditions).then(v = (l = results.push(...v)));
+		//
+		//i = -1;
+		//while (++i < l && (isOr ? results[i] : !results[i]));
+		//
+		//for (const v of this.querySelectorAll(`:scope > condition-${(isOr ? i < l : i === l)}`))
+		//	await v.execute(app, evaluated);
+		
+		
+		
+		//
+		
+		//const	{ result: symResult } = ConditionNode,
+		//		result =
+		//			this.querySelector(':is(condition-evaluation, condition-node):first-child')?.evaluate?.(input, evaluated),
+		//		executions = this.querySelectorAll(`:scope > condition-${result[symResult]}`), l = executions.length;
+		//let next;
+		//
+		//evaluated = { ...evaluated, [symResult]: result[symResult] };
+		//
+		//if (l) {
+		//	
+		//	let i, exec;
+		//	
+		//	i = -1;
+		//	while (++i < l) evaluated[(exec = executions[i]).assignName] = exec.execute();
+		//	
+		//	this.emit(result, evaluated);
+		//	
+		//}
+		//
+		//if (result) {
+		//	
+		//	const { conditionTagNames } = ConditionNode;
+		//	
+		//	next = this.nextSibling;
+		//	while (!conditionTagNames.test(next.tagName) && (next = next.nextSibling));
+		//	
+		//}
+		//
+		//return next?.evaluate?.(input, evaluated) ?? evaluated;
+		
+	}
+	
+	get conditions() {
+		
+		return this.querySelectorAll(':scope > not(condition-true, condition-false)');
+		
+	}
+	
+	get assignName() {
+		
+		this.getAttribute('assign-name');
+		
+	}
+	set assignName(v) {
+		
+		this.setAttribute('assign-name', v);
+		
+	}
+	
+	get logic() {
+		
+		return this.getAttribute('logic');
+		
+	}
+	set logic(v) {
+		
+		return this.setAttribute('logic', v);
+		
+	}
+	
+	get selector() {
+		
+		return this.getAttribute('selector');
+		
+	}
+	set selector(v) {
+		
+		this.setAttribute('selector', v);
 		
 	}
 	
 }
-class ConditionEvaluation extends CustomElement {
-	
-	static {
-		
-		this.tagName = 'condition-evaluation';
-		
-	}
-	
-	constructor() {
-		
-		super();
-		
-	}
-	
-	play() {
-		
-		return new Promise(async rs => {
-				
-				await this.evaluate();
-				
-				rs();
-				
-			});
-		
-	}
-	
-	evaluate(input, evaluated = {}) {
-		
-		(evaluated && typeof evaluated === 'object') || (evaluated = {});
-		
-		const { condition, logic = 'and', type } = this.dataset;
-		let result, next, left;
-		
-		switch (type) {
-			default: left = input;
-		}
-		
-		switch (condition) {
-			default: result = this.isEqual(left);
-		}
-		
-		if ((evaluated[ConditionNode.result] = result) ? logic === 'or' : logic === 'and') return evaluated;
-		
-		const { conditionTagNames } = ConditionNode;
-		
-		next = this.nextSibling;
-		while (!conditionTagNames.test(next.tagName) && (next = next.nextSibling));
-		
-		return next?.evaluate?.(left, evaluated) ?? evaluated;
-		
-	}
-	
-	isEqual(left) {
-		switch (this.dataset.valueType) {
-			case 'regexp': return this.valueOf().test(left);
-			default: return left === this;
-		}
-	}
-	
-	valueOf() {
-		switch (this.dataset.valueType) {
-			case 'number': return +this.textContent;
-			case 'regexp': return new RegExp(this.textContent, this.dataset?.regexpOption ?? '');
-			default: return this.textContent;
-		}
-	}
-	
-}
+//class ConditionEvaluation extends CustomElement {
+//	
+//	static {
+//		
+//		this.tagName = 'condition-evaluation';
+//		
+//	}
+//	
+//	constructor() {
+//		
+//		super();
+//		
+//	}
+//	
+//	play() {
+//		
+//		return new Promise(async rs => {
+//				
+//				await this.evaluate();
+//				
+//				rs();
+//				
+//			});
+//		
+//	}
+//	
+//	evaluate(input, evaluated = {}) {
+//		
+//		(evaluated && typeof evaluated === 'object') || (evaluated = {});
+//		
+//		const { condition, logic = 'and', type } = this.dataset;
+//		let result, next, left;
+//		
+//		switch (type) {
+//			default: left = input;
+//		}
+//		
+//		switch (condition) {
+//			default: result = this.isEqual(left);
+//		}
+//		
+//		if ((evaluated[ConditionNode.result] = result) ? logic === 'or' : logic === 'and') return evaluated;
+//		
+//		const { conditionTagNames } = ConditionNode;
+//		
+//		next = this.nextSibling;
+//		while (!conditionTagNames.test(next.tagName) && (next = next.nextSibling));
+//		
+//		return next?.evaluate?.(left, evaluated) ?? evaluated;
+//		
+//	}
+//	
+//	isEqual(left) {
+//		switch (this.dataset.valueType) {
+//			case 'regexp': return this.valueOf().test(left);
+//			default: return left === this;
+//		}
+//	}
+//	
+//	valueOf() {
+//		switch (this.dataset.valueType) {
+//			case 'number': return +this.textContent;
+//			case 'regexp': return new RegExp(this.textContent, this.dataset?.regexpOption ?? '');
+//			default: return this.textContent;
+//		}
+//	}
+//	
+//}
 // ConditionTrue, ConditionFalse が継承するオブジェクト
 class ConditionExecution extends CustomElement {
 	
 	static bound = {
 		
-		play(rs) {
-			
-			return new Promise(async rs => {
-					
-					await this.execute(), rs();
-					
-				});
-			
-		}
+		//play(rs) {
+		//	
+		//	return new Promise(async rs => {
+		//			
+		//			await this.execute(), rs();
+		//			
+		//		});
+		//	
+		//}
 		
 	};
 	
@@ -1059,29 +1343,42 @@ class ConditionExecution extends CustomElement {
 		
 	}
 	
-	async play() {
+	async play(proxied) {
 		
-		return new Promise(this.playing);
+		for await (const exec of this);
+		
+	}
+	async execute(shared) {
+		
+		this[ConditionNode.shared] = shared;
+		
+		for await (const exec of this);
 		
 	}
 	
-	execute() {
+	//execute() {
+	//	
+	//	switch (this.dataset.type) {
+	//		
+	//		case 'query-selector':
+	//		return this.getRootNode().querySelector(this.textContent)?.cloneNode?.(true);
+	//		
+	//		case 'query-selector-all':
+	//		const nodes = this.getRootNode().querySelectorAll(this.textContent), l = nodes.length, values = [];
+	//		let i, v;
+	//		
+	//		i = -1;
+	//		for (v of nodes) values[++i] = v.cloneNode(true);
+	//		
+	//		return values;
+	//		
+	//	}
+	//	
+	//}
+	
+	async *[Symbol.asyncIterator]() {
 		
-		switch (this.dataset.type) {
-			
-			case 'query-selector':
-			return this.getRootNode().querySelector(this.textContent)?.cloneNode?.(true);
-			
-			case 'query-selector-all':
-			const nodes = this.getRootNode().querySelectorAll(this.textContent), l = nodes.length, values = [];
-			let i, v;
-			
-			i = -1;
-			for (v of nodes) values[++i] = v.cloneNode(true);
-			
-			return values;
-			
-		}
+		for (const exec of this.children) await exec?.execution?.(), yield exec;
 		
 	}
 	
@@ -1101,6 +1398,192 @@ class ConditionFalse extends ConditionExecution {
 	constructor() {
 		super();
 	}
+}
+// <reg-exp pattern="^\s*$" flags="" method="test" source="input"></reg-exp>
+class RegExpNode extends SubscriptionNode {
+	
+	//todo: 入力フォームの値の取得ないし同期
+	
+	static bound = {
+		
+		mutated() {
+			
+			this.execution();
+			
+		}
+		
+	};
+	
+	static {
+		
+		this.tagName = 'reg-exp',
+		
+		this.mutationInit = { subtree: true, characterData: true };
+		
+	}
+	
+	constructor() {
+		
+		super();
+		
+		this.observeMutation(this.mutated, this, RegExpNode.mutationInit);
+		
+	}
+	
+	execution() {
+		
+		const { method, replacer, source } = this, regexp = +this;
+		
+		switch (method) {
+			
+			case 'replace': case 'replaceAll': return source[method](regexp, replacer);
+			
+			default: return typeof regexp[method] === 'function' ? regexp[method](source) : source?.[method]?.(regexp);
+			
+		}
+		
+	}
+	
+	get replacer() {
+		
+		return this.getAttribute('replacer') || '';
+		
+	}
+	set replacer(v) {
+		
+		return this.setAttribute('replacer', v);
+		
+	}
+	get method() {
+		
+		let v;
+		
+		switch (v = this.getAttribute('method').toLowerCase()) {
+			
+			case 'replace': case 'test': case 'match': case 'exec': return v;
+			
+			case 'replace-all': return 'replaceAll';
+			case 'match-all': return 'matchAll'; 
+			
+			default: return 'test';
+			
+		}
+		
+	}
+	get pattern() {
+		
+		return this.getAttribute('pattern');
+		
+	}
+	set pattern(v) {
+		
+		this.setAttribute('pattern', v);
+		
+	}
+	get flags() {
+		
+		this.getAttribute('flags');
+		
+	}
+	set flags(v) {
+		
+		this.setAttribute('flags', v);
+		
+	}
+	get source() {
+		
+		switch (this.getAttribute('source').toLowerCase()) {
+			
+			case 'inner-html': return this.innerHTML;
+			case 'outer-html': return this.outerHTML;
+			case 'inner-text': return this.innerText;
+			default: return this.textContent;
+			
+		}
+		
+	}
+	set source(v) {
+		
+		this.setAttribute('source', v);
+		
+	}
+	
+	valueOf() {
+		
+		return new RegExp(this.pattern, this.flags);
+		
+	}
+	
+}
+// <query-selector selector="#dialogs .d-0" method="clone"></query-selector>
+class QuerySelector extends SubscriptionNode {
+	
+	static {
+		
+		this.tagName = 'query-selector';
+		
+	}
+	
+	constructor() {
+		
+		super();
+		
+	}
+	
+	execution() {
+		
+		const selected = document.querySelectorAll(this.selector);
+		let l;
+		
+		if (!(l = selected.length)) return;
+		
+		const { all, method } = this, executed = [];
+		let i;
+		
+		i = -1, l = all && 1;
+		while (++i < l) {
+			switch (method) {
+				case 'clone': default: executed[i] = selected[i].cloneNode(true);
+			}
+		}
+		
+		this.append(...executed[i]);
+		
+		return executed;
+		
+	}
+	
+	get all() {
+		
+		return this.hasAttribute('all');
+		
+	}
+	set all(v) {
+		
+		return this[(v === false ? 'remove' : 'set') + 'Attribute']('all', v);
+		
+	}
+	get method() {
+		
+		return this.getAttribute('method').toLowerCase();
+		
+	}
+	set method(v) {
+		
+		this.setAttribute('method', v);
+		
+	}
+	get selector() {
+		
+		return this.getAttribute('selector');
+		
+	}
+	set selector(v) {
+		
+		this.setAttribute('selector', v);
+		
+	}
+	
 }
 
 class STimeout extends CustomElement {
@@ -2001,10 +2484,10 @@ class ConsoleNode extends CustomElement {
 		
 	}
 	
-	emitInput(targetEvent) {
+	emitInput(event) {
 		
 		//this.closest('console-node')?.emit('input', targetEvent);
-		this.emit('console-input', targetEvent);
+		this.emit('console-input', { event, target: this });
 		
 	}
 	
@@ -2347,9 +2830,12 @@ defineCustomElements(
 	MetaDatum,
 
 	ConditionNode,
-	ConditionEvaluation,
+	//ConditionEvaluation,
 	ConditionTrue,
 	ConditionFalse,
+	
+	RegExpNode,
+	QuerySelector,
 	
 	MeasureBox,
 	

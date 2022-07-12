@@ -37,11 +37,21 @@
 			<article slot="content">
 				<div>
 					
-					<condition-node type="input-standby">
+					<condition-node type="input-standby" selector="#primary">
+						<reg-exp pattern="^\s*$" flags="" method="test" source="input"></reg-exp>
+						<condition-true assign-name="dialogs">
+							<query-selector selector="#dialogs .d-0" method="clone"></query-selector>
+						</condition-true>
+						<condition-false assign-name="dialogs">
+							<query-selector selector="#dialogs .d-0" method="clone"></query-selector>
+						</condition-false>
+					</condition-node>
+					
+					<!--<condition-node type="input-standby">
 						<condition-evaluation data-type="input" data-value-type="regexp" data-condition="equal">^\s*$</condition-evaluation>
 						<condition-true data-name="dialogs" data-type="query-selector-all">#dialogs .d-0</condition-true>
 						<condition-false data-name="dialogs" data-type="query-selector-all">#dialogs .d-0</condition-false>
-					</condition-node>
+					</condition-node>-->
 					
 					<s-p>
 						時は200X年
@@ -72,11 +82,6 @@
 			
 		</template>
 		
-		<template id="consoles-node" data-css="default.css">
-			<div>
-				<console-node></console-node>
-			</div>
-		</template>
 		<template id="console-node" data-css="default.css">
 			
 			<div>
@@ -142,7 +147,9 @@
 						<logs-node slot="dialog"></logs-node>
 					</dialog-node>
 				</div>
-				<consoles-node></consoles-node>
+				<consoles-node>
+					<console-node id="primary"></console-node>
+				</consoles-node>
 				<browser-node></browser-node>
 			</div>
 			
