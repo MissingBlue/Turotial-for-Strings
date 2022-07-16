@@ -37,20 +37,52 @@
 			<article slot="content">
 				<div>
 					
-					<condition-node type="input-standby" selector="#primary">
-						<reg-exp pattern="^\s*$" flags="" method="test" source="input"></reg-exp>
+					<event-listener selector="#primary" type="console-input">
+						
+						<condition-block>
+							
+							<reg-exp pattern="^.*$" flags="" method="test" source="text">
+								<query-selector selector="#primary" method="value"></query-selector>
+							</reg-exp>
+							
+							<condition-block op="equal">
+								
+								<condition-block op="left">
+									<reg-exp pattern="^.*$" flags="" method="test" source="text">
+										<query-selector selector="#primary" method="value"></query-selector>
+									</reg-exp>
+								</condition-block>
+								
+								<condition-block op="right">
+									<reg-exp pattern="^a$" flags="" method="test" source="text">
+										<query-selector selector="#primary" method="value"></query-selector>
+									</reg-exp>
+								</condition-block>
+								
+							</condition-block>
+							
+							<condition-true assign-name="dialogs">
+								<query-selector selector="#dialogs .d-0" method="clone"></query-selector>
+							</condition-true>
+							
+							<condition-false assign-name="dialogs">
+								<query-selector selector="#dialogs .d-0" method="clone"></query-selector>
+							</condition-false>
+							
+						</condition-block>
+						
+					</event-listener>
+					
+					<!--<condition-node type="input-standby" selector="#primary">
+						<reg-exp pattern="^.*$" flags="" method="test" source="text">
+							<query-selector selector="#primary" method="value"></query-selector>
+						</reg-exp>
 						<condition-true assign-name="dialogs">
 							<query-selector selector="#dialogs .d-0" method="clone"></query-selector>
 						</condition-true>
 						<condition-false assign-name="dialogs">
 							<query-selector selector="#dialogs .d-0" method="clone"></query-selector>
 						</condition-false>
-					</condition-node>
-					
-					<!--<condition-node type="input-standby">
-						<condition-evaluation data-type="input" data-value-type="regexp" data-condition="equal">^\s*$</condition-evaluation>
-						<condition-true data-name="dialogs" data-type="query-selector-all">#dialogs .d-0</condition-true>
-						<condition-false data-name="dialogs" data-type="query-selector-all">#dialogs .d-0</condition-false>
 					</condition-node>-->
 					
 					<s-p>
