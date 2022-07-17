@@ -429,9 +429,42 @@ class SubscriptionNode extends CustomElement {
 
 class AppProxyHandler {
 	
+	static {
+		
+	}
+	
 	static get() {
 		
 		return this.getFinally(...arguments);
+		
+	}
+	
+	static assignData(data) {
+		
+		const { assign, assignType, assignValue } = this.dataset;
+		
+		if (assign) {
+			
+			switch (assignType) {
+				case 'string': data[assign] = this.textContent; break;
+				case 'number': data[assign] = +this.textContent; break;
+				case 'boolean': data[assign] = !!this.textContent; break;
+				case 'undefined': data[assign] = void(this.textContent); break;
+				default:
+				try {
+					
+					data[assign] = JSON.parse(this.textContent);
+					
+				} catch (error) {
+					
+					data[assign] = this.textContent.trim();
+					
+				}
+			}
+			
+		}
+		
+		assignValue && (data[assignValue] = this.valueOf());
 		
 	}
 	
@@ -495,34 +528,50 @@ class ScriptProxyHandler {
 		
 		this[this.iteratorName = Symbol('ScriptProxyHandler.iteratorName')] = 'children',
 		
-		this[this.handlerName = Symbol('ScriptProxyHandler.handlerName')] = 'play',
+		this[this.begin = Symbol('ScriptProxyHandler.begin')] = 'play',
+		this[this.end = Symbol('ScriptProxyHandler.end')] = 'played',
 		
 		this.noRecursion = Symbol('ScriptProxyHandler.noRecursion'),
 		
-		this[this.callbackName = Symbol('ScriptProxyHandler.callbackName')] = async (proxy, shared) => {
+		this[this.callbackName = Symbol('ScriptProxyHandler.callbackName')] = async function (proxy, shared) {
 			
-			const { callbackName, fulfill, handlerName } = proxy;
+			const	{ fulfill, begin, end, dataset: { assign } } = this,
+					sync = this.dataset?.sync?.split?.(' ');
+			let played;
 			
-			await proxy?.[handlerName]?.(proxy, shared);
+			typeof this[begin] === 'function' && (
+					played = !sync || sync.indexOf('play') === -1 ?	await this[begin](this, shared) :
+																					this[begin](this, shared)
+				);
 			
-			if (proxy.constructor[ScriptProxyHandler.noRecursion]) return;
+			if (this.constructor[ScriptProxyHandler.noRecursion]) return;
 			
 			switch (fulfill) {
 				
 				case 'all': case 'all-settled': case 'any': case 'race':
-				await Promise[fulfill === 'all-settled' ? 'allSettled' : fulfill](proxy[ScriptProxyHandler.asyncValueOf]);
+				await Promise[fulfill === 'all-settled' ? 'allSettled' : fulfill](this[ScriptProxyHandler.asyncValueOf]);
 				break;
 				
 				default:
 				
-				const asyncIterator = proxy[Symbol.asyncIterator](shared);
+				const asyncIterator = this[Symbol.asyncIterator](shared);
 				
 				for await (const v of asyncIterator);
 				
 			}
 			
+			typeof this[end] === 'function' && (
+					!sync || sync.indexOf('played') === -1 ?	await this[end](this, shared, played) :
+																			this[end](this, shared, played)
+				);
+			
+			this.assignData(shared),
+			
+			this.dispatchEvent(new CustomEvent('played', { detail: this }));
+			
 		},
 		
+		this.assignData = AppProxyHandler.assignData,
 		this.getFinally = AppProxyHandler.getFinally;
 		
 	};
@@ -548,9 +597,8 @@ class ScriptProxyHandler {
 			case 'fulfill':
 			return target.getAttribute('fulfill');
 			
-			case 'iteratorName': case 'handlerName': case 'callbackName':
-			return (property = this[property]) in target.constructor ?	target.constructor[property] :
-																							this[property];
+			case 'iteratorName': case 'callbackName': case 'begin': case 'end':
+			return (property = this[property]) in target.constructor ? target.constructor[property] : this[property];
 			
 		}
 		
@@ -783,7 +831,7 @@ class AppNode extends CustomElement {
 		
 	}
 	
-	async play(shared) {
+	async play(shared = {}) {
 		
 		const	{ proxy, revoke } = Proxy.revocable(this, ScriptProxyHandler),
 				asyncIterator = proxy[Symbol.asyncIterator](shared);
@@ -910,7 +958,9 @@ class EventListener extends SubscriptionNode {
 	
 	static {
 		
-		this.tagName = 'event-listener';
+		this.tagName = 'event-listener',
+		
+		this[ScriptProxyHandler.noRecursion] = true;
 		
 	}
 	
@@ -970,74 +1020,27 @@ class EventListener extends SubscriptionNode {
 
 // 論理演算を表現するカスタム要素
 
-//class LogicProxyHandler {
-//	
-//	static {
-//		
-//		this[this.handlerName = Symbol('LogicProxyHandler.handlerName')] = 'logic',
-//		this[this.iteratorName = Symbol('LogicProxyHandler.iteratorName')] = 'children',
-//		
-//		this[this[this.callbackName = Symbol('LogicProxyHandler.callbackName')] = Symbol('LogicProxyHandler.callback')] = async (proxy, shared) => {
-//			
-//			const { handlerName, tagName } = proxy, asyncIterator = proxy[Symbol.asyncIterator](shared);
-//			let v;
-//			
-//			for await (const value of asyncIterator) v = value;
-//			
-//			return await proxy?.[handlerName]?.(shared) ?? v;
-//			
-//		},
-//		
-//		this.getFinally = AppProxyHandler.getFinally;
-//		
-//	}
-//	
-//	static get(target, property, receiver) {
-//		
-//		switch (property) {
-//			
-//			case 'iteratorName': case 'handlerName': case 'callbackName':
-//			return (property = this[property]) in target.constructor ? target.constructor[property] : this[property];
-//			
-//		}
-//		
-//		return this.getFinally(...arguments);
-//		
-//	}
-//	
-//	static *[Symbol.iterator]() {
-//		
-//		for (const logicNode of this[this.iteratorName]) yield Proxy.revocable(logicNode, LogicProxyHandler);
-//		
-//	}
-//	
-//	static async *[Symbol.asyncIterator](shared) {
-//		
-//		const { callbackName } = this;
-//		
-//		for (const { proxy, revoke } of this) yield await proxy?.[callbackName]?.(proxy, shared), revoke();
-//		
-//	}
-//	
-//}
 class ConditionProxyHandler {
 	
 	static {
 		
 		this.banList = new Set(),
 		
+		this.splices = Symbol('ConditionProxyHandler.splices'),
+		
 		this[this.iteratorName = Symbol('ConditionProxyHandler.iteratorName')] = 'children',
 		this[this.handlerName = Symbol('ConditionProxyHandler.handlerName')] = 'evaluate',
 		
 		this[this.callbackName = Symbol('ConditionProxyHandler.callbackName')] = Symbol('ConditionProxyHandler.callback');
 		
+		this.assignData = AppProxyHandler.assignData,
 		this.getFinally = AppProxyHandler.getFinally,
 		
 		this[this.data = Symbol('ConditionProxyHandler.data')] = new WeakMap(),
 		
 		this[this.callbackName] = async function (proxy, shared) {
 			
-			const { handlerName, tagName } = this;
+			const { handlerName, tagName } = this, { splices } = ConditionProxyHandler;
 			
 			const asyncIterator = this[Symbol.asyncIterator](shared), values = [];
 			let i;
@@ -1046,11 +1049,16 @@ class ConditionProxyHandler {
 			// つまりその子要素の子要素中にひとつでも [handlerName] が示すメソッドに false を返すものがあれば、この子要素は false として判定される。
 			
 			i = -1;
-			for await (const evaluated of asyncIterator) values[++i] = evaluated;
+			for await (const evaluated of asyncIterator)
+				evaluated?.[splices] ? (i = values.push(...evaluated) - 1) : (values[++i] = evaluated);
 			
 			// メソッド target.prototype[ConditionProxyHandler.handlerName] を持たないオブジェクトはすべて true として判定する。
 			
-			return await this?.[handlerName]?.(values, shared);
+			const v = await this?.[handlerName]?.(values, shared);
+			
+			this.assignData(shared);
+			
+			return v;
 			
 		}
 		
@@ -1098,7 +1106,7 @@ class ConditionProxyHandler {
 			(shared = { [ConditionBlock[sharedType === 'string' ? 'input' : 'anon']]: shared });
 		
 		// メソッド target.prototype[proxied.handlerName] を持たないオブジェクトはすべて true として判定する。
-		for (const { proxy, revoke } of this) yield await proxy?.callbackName?.(proxy, shared);
+		for (const { proxy, revoke } of this) yield await proxy?.callbackName?.(proxy, shared), revoke();
 		
 	}
 	
@@ -1180,22 +1188,8 @@ class ConditionBlock extends SubscriptionNode {
 		
 		this.tagName = 'condition-block',
 		
-		//this.result = Symbol('ConditionBlock.result'),
 		this.input = Symbol('ConditionBlock.input'),
 		this.anon = Symbol('ConditionBlock.anon'),
-		
-		// 使ってない？
-		//this.conditionBlocks = [ 'condition-block', 'condition-evaluation' ],
-		//
-		//this.conditionTagNames = new RegExp(`^(?:${this.conditionBlocks.join('|')})$`, 'i'),
-		//this.conditionBlocksSelector = `:scope > ${this.conditionBlocks.join(',')}`,
-		//
-		//this.mutatedChildListOption = { childList: true },
-		//
-		//this.iteratorName = 'conditions',
-		//
-		//this.callbackName = 'evaluate',
-		//
 		
 		this[ConditionProxyHandler.iteratorName] = 'evaluations',
 		this.evaluationsSelectorBanList = new Set(),
@@ -1270,37 +1264,6 @@ class ConditionBlock extends SubscriptionNode {
 		
 	}
 	
-	//async evaluate(shared) {
-	//	
-	//	const sharedType = typeof shared;
-	//	
-	//	(shared && sharedType === 'object') ||
-	//		(shared = { [ConditionBlock[sharedType === 'string' ? 'input' : 'anon']]: shared });
-	//	
-	//	const	{ proxy, revoke } = Proxy.revocable(this, ConditionProxyHandler),
-	//			asyncIterator = proxy[Symbol.asyncIterator](shared),
-	//			isOr = proxy.logic === 'or',
-	//			values = [];
-	//	let i, isTrue;
-	//	
-	//	i = -1;
-	//	for await (const evaluated of asyncIterator) values[++i] = evaluated;
-	//	
-	//	isTrue = this.ops[this.op]?.(values) ?? true, this.not && (isTrue = !isTrue);
-	//	
-	//	for await (const exec of proxy.querySelectorAll(`condition-${isTrue}`)) exec.execute(shared);
-	//	
-	//	revoke();
-	//	
-	//	return isTrue;
-	//	
-	//}
-	
-	//get conditions() {
-	//	
-	//	return this.querySelectorAll(':scope > not(condition-true, condition-false)');
-	//	
-	//}
 	isComparison() {
 		
 		return ConditionBlock.comparisonOps.indexOf(this.op) !== -1;
@@ -1338,17 +1301,6 @@ class ConditionBlock extends SubscriptionNode {
 		return this.setAttribute('logic', v);
 		
 	}
-	
-	//get selector() {
-	//	
-	//	return this.getAttribute('selector');
-	//	
-	//}
-	//set selector(v) {
-	//	
-	//	this.setAttribute('selector', v);
-	//	
-	//}
 	
 	get op() {
 		
@@ -1429,7 +1381,9 @@ class ConditionTrue extends ConditionExecution {
 	}
 	
 	constructor() {
+		
 		super();
+		
 	}
 	
 }
@@ -1442,232 +1396,13 @@ class ConditionFalse extends ConditionExecution {
 	}
 	
 	constructor() {
+		
 		super();
+		
 	}
 	
 }
 
-//class LogicNode extends SubscriptionNode {
-//	
-//	static {
-//		
-//		this.tagName = 'logic-node',
-//		
-//		this[LogicProxyHandler.iteratorName] = 'logicNodes',
-//		this[ConditionProxyHandler.callbackName] = 'logic';
-//		
-//	}
-//	
-//	constructor() {
-//		
-//		super();
-//		
-//	}
-//	
-//	async evaluate(shared) {
-//		
-//		this.logic(shared);
-//		
-//	}
-//	
-//	async logic(shared) {
-//		
-//		const	{ proxy, revoke } = Proxy.revocable(this, LogicProxyHandler),
-//				asyncIterator = (hi(proxy,proxy[Symbol.asyncIterator]),proxy[Symbol.asyncIterator](shared)),
-//				left = await asyncIterator.next().value, right = await asyncIterator.next().value;
-//		
-//		revoke();
-//		
-//		return this.operate(left, right);
-//		
-//	}
-//	
-//	get logicNodes() {
-//		
-//		return [ this.querySelector('logic-left'), this.querySelector('logic-right') ];
-//		
-//	}
-//	
-//}
-//class LogicEqual extends LogicNode {
-//	
-//	static {
-//		
-//		this.tagName = 'logic-equal';
-//		
-//	}
-//	
-//	constructor() {
-//		
-//		super();
-//		
-//	}
-//	
-//	operate(left, right) {
-//		
-//		const { not, strict } = this;
-//		
-//		return not ? strict ? left !== right : left != right : strict ? left === right : left == right;
-//		
-//	}
-//	
-//	get strict() {
-//		
-//		return this.hasAttribute('strict');
-//		
-//	}
-//	set strict(v) {
-//		
-//		this[(v === false ? 'remove' : 'set') + 'Attribute']('strict', v);
-//		
-//	}
-//	get not() {
-//		
-//		return this.hasAttribute('not');
-//		
-//	}
-//	set not(v) {
-//		
-//		this[(v === false ? 'remove' : 'set') + 'Attribute']('not', v);
-//		
-//	}
-//	
-//}
-//class LogicLeft extends SubscriptionNode {
-//	
-//	static {
-//		
-//		this.tagName = 'logic-left';
-//		
-//	}
-//	
-//	constructor() {
-//		
-//		super();
-//		
-//	}
-//	
-//}
-//class LogicRight extends SubscriptionNode {
-//	
-//	static {
-//		
-//		this.tagName = 'logic-right';
-//		
-//	}
-//	
-//	constructor() {
-//		
-//		super();
-//		
-//	}
-//	
-//}
-
-//class ConditionCase extends CustomElement {
-//	
-//	static bound = {
-//		
-//	};
-//	
-//	static {
-//		
-//		this.tagName = 'condition-case';
-//		
-//	}
-//	
-//	constructor() {
-//		
-//		super();
-//		
-//	}
-//	
-//	async play(proxied) {
-//		
-//		for await (const exec of this);
-//		
-//	}
-//	async execute(shared) {
-//		
-//		this[ConditionBlock.shared] = shared;
-//		
-//		for await (const exec of this.children) await exec?.execute?.(shared);
-//		
-//	}
-//	
-//	evaluate(v) {
-//		
-//		return	this.not ? this.strict ? v !== this.value : v != this.value :
-//						this.strict ? v === this.value : v == this.value;
-//		
-//	}
-//	
-//	get type() {
-//		
-//		return this.getAttribute('type');
-//		
-//	}
-//	set type(v) {
-//		
-//		this.setAttribute('type', v);
-//		
-//	}
-//	get value() {
-//		
-//		if (this.false) return false;
-//		
-//		if (!this.hasAttribute('value')) return true;
-//		
-//		let v = this.getAttribute('value');
-//		
-//		switch (this.type) {
-//			
-//			case 'boolean': return v || v.trim() !== 'false' || Number.isNaN(v = parseInt(v) || !!v;
-//			
-//			case 'number': return parseFloat(v);
-//			
-//			default: return v;
-//			
-//		}
-//		
-//	}
-//	set value(v) {
-//		
-//		this.setAttribute('value', v);
-//		
-//	}
-//	get false() {
-//		
-//		return this.hasAttribute('false');
-//		
-//	}
-//	set false(v) {
-//		
-//		this[(v === false ? 'remove' : 'set') + 'Attribute']('false', v);
-//		
-//	}
-//	get strict() {
-//		
-//		return this.hasAttribute('strict');
-//		
-//	}
-//	set strict(v) {
-//		
-//		this[(v === false ? 'remove' : 'set') + 'Attribute']('strict', v);
-//		
-//	}
-//	get not() {
-//		
-//		return this.hasAttribute('not');
-//		
-//	}
-//	set not(v) {
-//		
-//		this[(v === false ? 'remove' : 'set') + 'Attribute']('not', v);
-//		
-//	}
-//	
-//}
 // <reg-exp pattern="^\s*$" flags="" method="test" source="input"></reg-exp>
 class RegExpNode extends SubscriptionNode {
 	
@@ -1829,53 +1564,96 @@ class QuerySelector extends SubscriptionNode {
 		
 	}
 	
-	evaluate(values, shared) {
+	async evaluate(values, shared) {
 		
-		return this.select();
+		const executed = this.select();
+		hi(this);
+		if (this.method === 'replace') {
+			
+			const values = [];
+			let i, proxy;
+			
+			i = -1;
+			for (const node of executed) {
+				
+				for await (const evaluated of (proxy = Proxy.revocable(node, ConditionProxyHandler)).proxy)
+					values[++i] = evaluated;
+				
+				proxy.revoke();
+				
+			}
+			// 以下のプロパティ名を示す ConditionProxyHandler のプロパティは現在未作成。
+			values[ConditionProxyHandler?.splices] = true;
+			
+			return values;
+			
+		}
 		
 	}
-	play() {
+	async play() {
 		
-		this.select();
+		const played = this.select();
+		
+		if (this.method === 'replace') {
+			
+			let proxy;
+			
+			for (const node of played) {
+				for await (const evaluated of (proxy = Proxy.revocable(node, ScriptProxyHandler)).proxy);
+				proxy.revoke();
+			}
+			
+		}
+		
+	}
+	
+	execute() {
+		
+		return this.select();
 		
 	}
 	
 	select(appends = this.appends) {
 		
-		const selected = this.composeClosest('app-node').qq(this.selector);
+		const { selector } = this, selected = selector ? this.composeClosest('app-node').qq(selector) : [ this.children ];
 		let l;
 		
 		if (!(l = selected.length)) return;
 		
-		appends || (this.innerHTML = '');
+		//appends || (this.innerHTML = '');
 		
-		const { all, method } = this, executed = [];
+		const { all, method, source } = this, executed = [];
 		let i;
 		
 		i = -1, all || (l = 1);
 		while (++i < l) {
-			switch (method) {
+			switch (source) {
 				case 'value': executed[i] = selected[i]?.value ?? ''; break;
-				case 'clone': default: executed[i] = selected[i].cloneNode(true);
+				default: executed[i] = selected[i].cloneNode(true);
 			}
 		}
 		
-		this.append(...executed);
+		switch (method) {
+			case 'append': this.append(...executed); break;
+			case 'replace': default: this.replaceWith(...executed);
+		}
 		
 		return executed;
 		
 	}
 	
-	get appends() {
-		
-		return this.hasAttribute('appends');
-		
-	}
-	set appends(v) {
-		
-		return this[(v === false ? 'remove' : 'set') + 'Attribute']('appends', v);
-		
-	}
+	//get appends() {
+	//	
+	//	return this.hasAttribute('appends');
+	//	
+	//}
+	//set appends(v) {
+	//	
+	//	return this[(v === false ? 'remove' : 'set') + 'Attribute']('appends', v);
+	//	
+	//}
+	// 選択要素をすべて対象とするか、最初のものだけにするかを指定する論理値。
+	// いずれの場合も querySelectorAll が使われ、取得後に指定に従った要素を対象にする。
 	get all() {
 		
 		return this.hasAttribute('all');
@@ -1886,9 +1664,19 @@ class QuerySelector extends SubscriptionNode {
 		return this[(v === false ? 'remove' : 'set') + 'Attribute']('all', v);
 		
 	}
+	get source() {
+		
+		return this.getAttribute('source')?.toLowerCase();
+		
+	}
+	set source(v) {
+		
+		this.setAttribute('source', v);
+		
+	}
 	get method() {
 		
-		return this.getAttribute('method').toLowerCase();
+		return this.getAttribute('method')?.toLowerCase();
 		
 	}
 	set method(v) {
@@ -1923,9 +1711,42 @@ class STimeout extends CustomElement {
 		
 	}
 	
-	play() {
+	evaluate() {
 		
-		return new Promise(rs => setTimeout(rs, this.value));
+		return this.setTimeout();
+		
+	}
+	
+	play(proxy, shared) {
+		
+		return this.setTimeout();
+		
+	}
+	
+	played(proxy, shared, played) {
+		
+		return this.dataset.sync?.split?.(' ')?.indexOf?.('play') === -1 || played;
+		
+	}
+	
+	setTimeout() {
+		
+		return new Promise(rs => {
+					
+					let last;
+					
+					last = Date.now(), this.elapsed = 0;
+					
+					const timer = setInterval(() => {
+							
+							this.paused ? (last = true) :
+								last === true ? (last = Date.now()) :
+									(this.elapsed += (last - (last = Date.now())) * -1) >= this.value &&
+										(clearInterval(timer), rs());
+							
+						}, 1000 / 60);
+					
+				});
 		
 	}
 	
@@ -1937,6 +1758,16 @@ class STimeout extends CustomElement {
 	set value(v) {
 		
 		return this.setAttribute('value', v);
+		
+	}
+	get paused() {
+		
+		return this.hasAttribute('paused');
+		
+	}
+	set paused(v) {
+		
+		this[v === false ? 'remove' : 'set' + 'Attribute']('paused', v);
 		
 	}
 	
@@ -1968,6 +1799,16 @@ class SP extends CustomElement {
 }
 class SHandle extends CustomElement {
 	
+	static bound = {
+		
+		fulfilled(event) {
+			
+			this.operate();
+			
+		}
+		
+	};
+	
 	static {
 		
 		this.tagName = 's-handle';
@@ -1996,17 +1837,15 @@ class SHandle extends CustomElement {
 	
 	async play() {
 		
-		return new Promise(async rs => {
-				
-				const { children } = this, l = children.length;
-				let i;
-				
-				i = -1, this.operate();
-				while (++i < l) await children[i]?.play?.();
-				
-				rs();
-				
-			});
+		//const { proxy = this, revoke } = this[Symbol.asyncIterator] || Proxy.revocable(this, ScriptProxyHandler);
+		
+		this.addEvent(this, 'fulfilled', () => this.toggle, { once: true }),
+		
+		this.operate();
+		
+		//for await (const played of proxy);
+		
+		//revoke();
 		
 	}
 	
@@ -2032,6 +1871,38 @@ class SHandle extends CustomElement {
 	}
 	
 }
+class DisableInput extends CustomElement {
+	
+	static {
+		
+		this.tagName = 'disable-input';
+		
+	}
+	
+	constructor() {
+		
+		super();
+		
+	}
+	
+	async play() {
+		
+		this.disable();
+		
+	}
+	async played() {
+		
+		this.disable(false);
+		
+	}
+	
+	disable(disables) {
+		
+		this.composeClosest('app-node')?.disableConsoles(disables);
+		
+	}
+	
+}
 class ScriptNode extends SubscriptionNode {
 	
 	static bound = {};
@@ -2046,19 +1917,7 @@ class ScriptNode extends SubscriptionNode {
 		
 	};
 	
-	static subscriptinos = [
-		
-		{
-			to: 'app-node',
-			type: 'input',
-			handler({ target }) {
-				
-				this.emit
-				
-			}
-		}
-		
-	];
+	static subscriptinos = [];
 	
 	static {
 		
@@ -2728,13 +2587,13 @@ class ConsolesNode extends CustomElement {
 		
 	}
 	
-	disableConsoles(disables) {
+	disableConsoles(disables = true) {
 		
 		const consoleNodes = this.querySelectorAll('console-node'), l = consoleNodes.length;
 		let i;
 		
 		i = -1;
-		while (++i < l) consoleNodes[i].disable = disables;
+		while (++i < l) consoleNodes[i].disabled = disables;
 		
 	}
 	
@@ -2814,25 +2673,25 @@ class ConsoleNode extends CustomElement {
 		
 	}
 	
-	get disable() {
+	get disabled() {
 		
 		const	components = this.qq('input, button'), l = components.length;
 		let i;
 		
 		i = -1;
-		while (++i < l && components[i].hasAttribute('disable'));
+		while (++i < l && components[i].hasAttribute('disabled'));
 		
 		return i === l;
 		
 	}
-	set disable(v) {
+	set disabled(v) {
 		
 		const	components = this.qq('input, button'), l = components.length,
-				method = (v ? 'set' : 'rmeove') + 'Attribute';
+				method = (v ? 'set' : 'remove') + 'Attribute';
 		let i;
 		
 		i = -1;
-		while (++i < l) components[i][method]('disable', '');
+		while (++i < l) components[i][method]('disabled', '');
 		
 	}
 	get value() {
@@ -3172,6 +3031,7 @@ defineCustomElements(
 	SP,
 	SHandle,
 	STimeout,
+	DisableInput,
 	
 	//LogicNode,
 	//LogicEqual,

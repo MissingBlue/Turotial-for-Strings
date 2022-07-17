@@ -39,7 +39,7 @@
 					
 					<event-listener selector="#primary" type="console-input">
 						
-						<condition-block>
+						<condition-block id="console-input">
 							
 							<reg-exp pattern="^.*$" flags="" method="test" source="text">
 								<query-selector selector="#primary" method="value"></query-selector>
@@ -49,49 +49,44 @@
 								
 								<condition-block op="left">
 									<reg-exp pattern="^.*$" flags="" method="test" source="text">
-										<query-selector selector="#primary" method="value"></query-selector>
+										<query-selector selector="#primary" source="value"></query-selector>
 									</reg-exp>
 								</condition-block>
 								
 								<condition-block op="right">
 									<reg-exp pattern="^a$" flags="" method="test" source="text">
-										<query-selector selector="#primary" method="value"></query-selector>
+										<query-selector selector="#primary" source="value"></query-selector>
 									</reg-exp>
 								</condition-block>
 								
 							</condition-block>
 							
 							<condition-true assign-name="dialogs">
-								<query-selector selector="#dialogs .d-0" method="clone"></query-selector>
+								<query-selector selector="#dialogs .d-0" method="append"></query-selector>
 							</condition-true>
 							
 							<condition-false assign-name="dialogs">
-								<query-selector selector="#dialogs .d-0" method="clone"></query-selector>
+								<query-selector selector="#dialogs .d-0" method="append"></query-selector>
 							</condition-false>
 							
 						</condition-block>
 						
 					</event-listener>
 					
-					<!--<condition-node type="input-standby" selector="#primary">
-						<reg-exp pattern="^.*$" flags="" method="test" source="text">
-							<query-selector selector="#primary" method="value"></query-selector>
-						</reg-exp>
-						<condition-true assign-name="dialogs">
-							<query-selector selector="#dialogs .d-0" method="clone"></query-selector>
-						</condition-true>
-						<condition-false assign-name="dialogs">
-							<query-selector selector="#dialogs .d-0" method="clone"></query-selector>
-						</condition-false>
-					</condition-node>-->
+					<event-listener selector="#primary" type="console-input">
+						<query-selector selector="#console-input" method="replace"></query-selector>
+					</event-listener>
 					
-					<s-p>
-						時は200X年
-					</s-p>
-					<s-timeout value="1000"></s-timeout>
-					<s-p>
-						地球上で起きた最終核戦争により人類の文明は消滅した。
-					</s-p>
+					<disable-input>
+						<s-p>
+							時は200X年
+						</s-p>
+						<s-timeout value="1000"></s-timeout>
+						<p data-assign="p">hi</p>
+						<s-p>
+							地球上で起きた最終核戦争により人類の文明は消滅した。
+						</s-p>
+					</disable-input>
 					
 				</div>
 			</article>
@@ -148,7 +143,7 @@
 			<div>
 				<display-node>
 					<measure-box>
-						<sprite-node><div slot="sprite" class="character-17"></div></sprite-node>
+						<!--<sprite-node><div slot="sprite" class="character-17"></div></sprite-node>-->
 						<sprite-node><div slot="sprite" class="character-heat"></div></sprite-node>
 					</measure-box>
 				</display-node>
