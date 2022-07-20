@@ -537,6 +537,18 @@ class ExtensionNode extends HTMLElement {
 		unit === null || unit === false || this.style.setProperty(name + '-unit', value + unit);
 		
 	}
+	setCSSVarAll(object, prefix = '', unit = 'px') {
+		
+		if (!object || typeof object !== 'object') return;
+		
+		let k,v,u;
+		
+		prefix && (prefix += '-');
+		for (k in object) (v = object[k]) && typeof v === 'object' ?
+			(k = prefix + (v.name || k), u = v.unit || unit, v = v.value) : (k = prefix + k, u = unit),
+			this.setCSSVar(k, v, u);
+		
+	}
 	
 	static LOGGER_SUFFIX = 'EN';
 	static tagName = 'extension-node';
@@ -743,6 +755,24 @@ class ExtensionNode extends HTMLElement {
 		return bound;
 		
 	}
+	
+	//static setCSSVar(target, name, value, prefix = '', unit = 'px') {
+	//	
+	//	target.style.setProperty(name = '--' + (prefix && (prefix += '-')) + name, value),
+	//	unit === null || unit === false || target.style.setProperty(name + prefix + '-unit', value + unit);
+	//	
+	//}
+	//static setCSSVarAll(target, object, prefix = '', unit = 'px') {
+	//	
+	//	if (!object || typeof object !== 'object') return;
+	//	
+	//	let k,v,p,u;
+	//	
+	//	for (k in object) (v = object[k]) && typeof v === 'object' ?
+	//		(k = v.name || k, p = v.prefix || prefix, u = v.unit || unit, v = v.value) : (p = prefix, u = unit),
+	//		ExtensionNode.setCSSVar(target, k, v, p, u);
+	//	
+	//}
 	
 }
 
