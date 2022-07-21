@@ -1,5 +1,5 @@
 import { Chr, Composer, ParseHelper, Pattern, default as strings, Terms } from './strings.js';
-import { ComputeNode, EventBridge, IndexedBlock, PackNode, PackedNode } from './compute/compute.js';
+import { ComputeNode, EventBridge, IndexedBlock, PackNode, PackedNode } from './compute.js';
 
 document.getElementById('console-node').content.querySelector('input').value =
 	'hi';
