@@ -317,3 +317,90 @@ delete-node::before {
 	width: var(--size);
 	
 }
+
+.s-p indexed-block {
+	
+	display: block;
+	position: relative;
+	
+}
+.s-p slot[name="content"] {
+	
+	display: block;
+	
+}
+.s-p slot[name="content"].computed {
+	
+	height: var(--computed-static-height-unit);
+	
+}
+.s-p ::slotted(pack-node) {
+	
+	--position: absolute;
+	
+	display: block;
+	position: relative;
+	
+}
+.s-p .static ::slotted(pack-node) {
+	
+	--position: static;
+	
+}
+.s-p ::slotted(pack-node.computed) {
+	
+	height: var(--computed-static-height-unit);
+	width: var(--computed-static-width-unit);
+	
+}
+pack-node > * {
+	
+	--k-duration: .5s;
+	--k-delay-max: 1s;
+	/*--k-delay: calc(var(--k-delay-max) * var(--index-4) / var(--index-length-3));*/
+	--k-delay: calc(.05s * var(--index-4));
+	--k-timing: steps(1, end);
+	
+	/*animation:	dialog var(--k-duration) var(--k-timing, linear) var(--k-delay) 1 normal forwards running,
+					tf var(--k-duration) linear var(--k-delay) 1 normal forwards running;*/
+	opacity: 0;
+	display: inline;
+	position: var(--position);
+	
+	animation: dialog var(--k-duration) var(--k-timing, linear) var(--k-delay) 1 normal forwards running;
+	
+}
+pack-node.computed > * {
+	
+	left: var(--computed-static-offset-left-unit);
+	top: var(--computed-static-offset-top-unit);
+	
+}
+@keyframes dialog {
+	
+	0% {
+		
+		opacity: 0;
+		
+	}
+	100% {
+		
+		opacity: 1;
+		
+	}
+	
+}
+@keyframes tf {
+	
+	0% {
+		
+		transform: scale(0);
+		
+	}
+	100% {
+		
+		transform: scale(1,1);
+		
+	}
+	
+}

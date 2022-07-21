@@ -1,113 +1,6 @@
 import strings from '../strings.js';
 
-//class IndexedBlockProxyHandler {
-//	
-//	static shuffleIndices(indices) {
-//		
-//		const l = indices.length, shuffled = [ ...indices ], { random } = Math;
-//		let i,i0, idx;
-//		
-//		i = -1;
-//		while (++i < l) idx = shuffled[i], shuffled[i] = shuffled[i0 = l * random() |0], shuffled[i0] = idx;
-//		
-//		return shuffled;
-//		
-//	}
-//	static randomizeIndices(indices) {
-//		
-//		const l = indices.length, randomized = [ ...indices ], { random } = Math;
-//		let i;
-//		
-//		i = -1;
-//		while (++i < l) randomized[i] = indices[l * random() |0];
-//		
-//		return randomized;
-//		
-//	}
-//	
-//	static get(target, property, receiver) {
-//		
-//		return this.getFinally(...arguments);
-//		
-//	}
-//	static getFinally(target, property, receiver) {
-//		
-//		return	target.hasOwnProperty(property) ?
-//						Reflect.get(...arguments) :
-//						property in target ?
-//							typeof (property = target[property]) === 'function' ?
-//								new Proxy(
-//									property,
-//									{
-//										apply(f, thisArg, args) {
-//											return f === property ? property.apply(target, args) : Reflect.apply(...arguments);
-//										}
-//									}
-//								) :
-//								property :
-//							this[property];
-//		
-//	}
-//	
-//	static *[Symbol.iterator](serialIndex = 0, selectedGlobalIndex = 0, depth = 0) {
-//		
-//		const targets = [ ...this.querySelectorAll(':scope > :not([data-no-index])') ], l = targets.length,
-//				children = [ ...this.children ], l0 = children.length,
-//				real = [], selected = [];
-//		let i, gi,si;
-//		
-//		if (!l0) return this;
-//		
-//		i = -1;
-//		while (++i < l) real[i] = children.indexOf(targets[i]);
-//		
-//		i = -1;
-//		while (++i < l) selected[i] = i;
-//		
-//		const	shuffled = this.shuffleIndices(real),
-//				randomized = this.randomizeIndices(real),
-//				shuffledSelected = this.shuffleIndices(selected),
-//				randomizedSelected = this.randomizeIndices(selected),
-//				id = '-' + (this.id || depth);
-//		
-//		this.style.setProperty(`--index${id}-length-real`, l),
-//		this.style.setProperty(`--index${id}-length`, l0),
-//		this.style.setProperty(`--index${id}-depth`, depth),
-//		
-//		i = si = -1;
-//		for (const child of children) {
-//			
-//			const	{ proxy, revoke } = Proxy.revocable(child, IndexedBlockProxyHandler),
-//					iterator = proxy[Symbol.iterator](serialIndex + 1, selectedGlobalIndex + 1, depth + 1),
-//					{ style } = child;
-//			
-//			++i, gi = serialIndex++,
-//			
-//			'noIndex' in this.dataset || (
-//					
-//					style.setProperty(`--global-index${id}-real`, gi),
-//					style.setProperty(`--global-index${id}`, selectedGlobalIndex++),
-//					style.setProperty(`--index${id}-real`, i),
-//					style.setProperty(`--index${id}`, ++si),
-//					style.setProperty(`--index${id}-reversed-real`, l - i - 1),
-//					style.setProperty(`--index${id}-reversed`, l0 - si - 1),
-//					style.setProperty(`--index${id}-shuffled-real`, shuffled[i]),
-//					style.setProperty(`--index${id}-shuffled`, shuffledSelected[si]),
-//					style.setProperty(`--index${id}-randomized-real`, randomized[i]),
-//					style.setProperty(`--index${id}-randomized`, randomizedSelected[si])
-//					
-//				);
-//			
-//			for (const proxied of iterator);
-//			
-//			yield proxy, revoke();
-//			
-//		}
-//		
-//	}
-//	
-//}
-class IndexedBlock extends CustomElement {
+export class IndexedBlock extends CustomElement {
 	
 	static bound = {
 		
@@ -206,7 +99,19 @@ class IndexedBlock extends CustomElement {
 		
 		if (indexing === 'none') return serialIndex;
 		
-		const	targets = [ ...node.querySelectorAll(':scope > :not([data-indexing="none"])') ], l = targets.length,
+		let targets;
+		
+		if (node instanceof HTMLSlotElement) {
+			
+			const assignedNodes = node.assignedNodes(), l = assignedNodes.length;
+			let i;
+			
+			i = -1, targets = [];
+			while (++i < l) assignedNodes[i].dataset.indexing === 'none' || (targets[i] = assignedNodes[i]);
+			
+		} else targets = [ ...node.querySelectorAll(':scope > :not([data-indexing="none"])') ];
+		
+		const	l = targets.length,
 				{ index, indexed, setCSSVar, shuffleIndices, randomizeIndices } = IndexedBlock,
 				properties = node[indexed] = [],
 				prefix = 'index';
@@ -220,7 +125,7 @@ class IndexedBlock extends CustomElement {
 				
 			);
 		
-		if (!length || !l) return serialIndex;
+		if (!l) return serialIndex;
 		
 		const indices = [];
 		let i,i0;
@@ -230,6 +135,8 @@ class IndexedBlock extends CustomElement {
 		
 		const	shuffled = shuffleIndices(indices), randomized = randomizeIndices(indices), hl = (l - 1) / 2 |0,
 				{ abs } = Math, { isArray } = Array;
+		
+		// ここから再帰
 		
 		i = -1, ++depth;
 		while (++i < l) {
@@ -318,7 +225,7 @@ class IndexedBlock extends CustomElement {
 // 属性 type に指定されたイベントをキャプチャし、bridge に指定されたセレクターに一致する要素、それがなければ直前の要素、
 // それがなければ親要素に対して、属性 emit に指定されたイベント名でイベントを通知する。emit が未指定であればキャプチャしたイベントのイベント名が使われる。
 // 直接関係のない要素間をイベントを通じて関連付ける。target が未指定の時に対象となる要素が EventBridge であれば、他の要素になるまで同方向へ探査する。
-class EventBridge extends CustomElement {
+export class EventBridge extends CustomElement {
 	
 	static bound = {
 		
@@ -447,84 +354,7 @@ class EventBridge extends CustomElement {
 	
 }
 
-//class ComputeProxyHandler {
-//	
-//	static getBoundingClientRect(target) {
-//		
-//		const { left, top, right, bottom } = target.getBoundingClientRect();
-//		
-//		return { x: left, y: top, width: right - left, height: bottom - top, left, top, right, bottom };
-//		
-//	}
-//	
-//	static {
-//		
-//	}
-//	
-//	static compute() {
-//		
-//		const { x, y, width, height } = this.getBoundingClientRect(this);
-//		
-//		this.setCSSVarAll({ x, y, width, height });
-//		
-//	}
-//	static setCSSVar(name, value, prefix = '', unit = 'px') {
-//		
-//		this.style.setProperty(name = '--' + (prefix && (prefix += '-')) + name, value),
-//		unit === null || unit === false || this.style.setProperty(name + prefix + '-unit', value + unit);
-//		
-//	}
-//	static setCSSVarAll(object, prefix = '', unit = 'px') {
-//		
-//		if (!object || typeof object !== 'object') return;
-//		
-//		let k,v,p,u;
-//		
-//		for (k in object) (v = object[k]) && typeof v === 'object' ?
-//			(k = v.name || k, p = v.prefix || prefix, u = v.unit || unit, v = v.value) : (p = prefix, u = unit),
-//			this.setCSSVar(k, v, p, u);
-//		
-//	}
-//	
-//	static get(target, property, receiver) {
-//		
-//		return this.getFinally(...arguments);
-//		
-//	}
-//	static getFinally(target, property, receiver) {
-//		
-//		return	target.hasOwnProperty(property) ?
-//						Reflect.get(...arguments) :
-//						property in target ?
-//							typeof (property = target[property]) === 'function' ?
-//								new Proxy(
-//									property,
-//									{
-//										apply(f, thisArg, args) {
-//											return f === property ? property.apply(target, args) : Reflect.apply(...arguments);
-//										}
-//									}
-//								) :
-//								property :
-//							this[property];
-//		
-//	}
-//	
-//	static *[Symbol.iterator]() {
-//		
-//		let proxied, revoke;
-//		
-//		for (const child of this.children) {
-//			const { proxy, revoke } = Proxy.revocable(child, ComputeProxyHandler);
-//			for (const child of proxy);
-//			proxy.compute(), yield proxy, revoke();
-//		}
-//		
-//	}
-//	
-//}
-
-class ComputeNode extends CustomElement {
+export class ComputeNode extends CustomElement {
 	
 	static bound = {
 		
@@ -572,17 +402,54 @@ class ComputeNode extends CustomElement {
 	
 	static compute(node, prefix, computed) {
 		
-		const	{ compute, setCSSVarAll } = ComputeNode,
-				{ dataset: { computeClasses }, children, classList } = node,
-				l = children.length;
-		let i;
+		const	{ compute, getComputed, setCSSVarAll } = ComputeNode,
+				{ dataset: { computeClasses }, classList } = node;
+		let i, children;
+		
+		children = node instanceof HTMLSlotElement ? node.assignedNodes() : node.children;
+		
+		const l = children.length
 		
 		i = -1;
 		while (++i < l) compute(children[i], prefix, computed);
 		
-		const { x, y, width, height } = node.getBoundingClientRect(node), v = { x, y, width, height };
+		setCSSVarAll(node, getComputed(node), prefix), computed && classList.add(computed);
 		
-		setCSSVarAll(node, v, prefix), computed && classList.add(computed);
+	}
+	static getComputed(node) {
+		
+		const { x, y, width, height } = node.getBoundingClientRect(node),
+				{ offsetLeft, offsetTop, offsetWidth, offsetHeight } = node;
+		
+		return {
+			x, y, width, height,
+			'offset-left': offsetLeft,
+			'offset-top': offsetTop,
+			'offset-width': offsetWidth,
+			'offset-height': offsetHeight
+		};
+		
+	}
+	
+	// node と、その子孫要素中の classNames を削除する。
+	// 子孫要素中に HTMLSlotElement が存在していれば、その assignedNodes から取得できる要素の classNames も再帰して削除する。
+	static removeClassNames(node, ...classNames) {
+		
+		const	nodes = node.querySelectorAll('.' + classNames.join('.')),
+				slots = node.getElementsByTagName('slot'),
+				{ removeClassNames } = ComputeNode;
+		let i,l,i0,l0, assignedNodes;
+		
+		i = -1, l = nodes.length, node.classList.remove(...classNames);
+		while (++i < l) nodes[i].classList.remove(...classNames);
+		
+		i = -1, l = slots.length;
+		while (++i < l) {
+			
+			i0 = -1, l0 = (assignedNodes = slots[i].assignedNodes()).length;
+			while (++i0 < l0) removeClassNames(assignedNodes[i0], ...classNames);
+			
+		}
 		
 	}
 	
@@ -598,11 +465,24 @@ class ComputeNode extends CustomElement {
 		
 		super(),
 		
-		this.addEvent(this, 'compute', this.compute),
+		this.addEvent(this, 'compute', this.emittedCompute),
 		
 		(this.ro = new ResizeObserver(this.mutated)).observe(this),
 		
 		this.passive || (this.mo = new MutationObserver(this.mutated)).observe(this, ComputeNode.mutatedInit);
+		
+	}
+	connectedCallback() {
+		
+		let ancestor;
+		
+		this.ro.observe(ancestor = this);
+		while ((ancestor = ancestor?.parentElement || ancestor?.getRootNode?.()?.host)) this.ro.observe(ancestor);
+		
+	}
+	disconnectedCallback() {
+		
+		this.ro.disconnect();
 		
 	}
 	attributeChangedCallback(name, oldValue, newValue) {
@@ -611,41 +491,21 @@ class ComputeNode extends CustomElement {
 		
 	}
 	
-	compute_() {
-		
-		const { mo } = this;
-		
-		mo?.disconnect?.(this);
-		
-		const { proxy, revoke } = Proxy.revocable(this, ComputeProxyHandler);
-		
-		for (const child of proxy);
-		
-		revoke(),
-		
-		mo?.observe?.(this, ComputeNode.mutatedInit),
-		
-		this.emit('computed', this);
-		
-	}
-	
 	compute() {
 		
 		const { classList, dataset: { computeContexts, computed }, mo } = this,
-				{ compute, mutatedInit } = ComputeNode,
-				contexts = computeContexts?.split?.(' ') || [],
-				last = this.querySelectorAll('.' + computed);
+				{ compute, mutatedInit, removeClassNames } = ComputeNode,
+				contexts = computeContexts?.split?.(' ') || [];
 		let i,l,l0, ctx;
 		
-		mo?.disconnect?.(this);
+		mo?.disconnect?.(this),
 		
-		i = -1, l = last.length, classList.remove(computed);
-		while (++i < l) last[i].classList.remove(computed);
+		removeClassNames(this, computed),
 		
 		i = -1, (!(l = contexts.length) || contexts.indexOf('') === -1) && (contexts[l++] = ''), l0 = l - 1;
 		while (++i < l)	(ctx = contexts[i]) && classList.add(ctx),
 								compute(this, 'computed' + (ctx && '-' + ctx), i === l0 && computed),
-								ctx && classList.remove(ctx),hi(ctx);
+								ctx && classList.remove(ctx);
 		
 		mo?.observe?.(this, mutatedInit), this.emit('computed', this);
 		
@@ -706,9 +566,12 @@ export class PackNode extends CustomElement {
 	
 	pack(asis = this.dataset.packAsis) {
 		
-		const { childNodes } = this, packed = new DocumentFragment();
+		const { childNodes, classList } = this, packed = new DocumentFragment();
 		let i,l,i0,l0, text, content;
 		
+		// テキストノードが断片化されている場合、それらを統合する。その上でそれぞれのテキストノード内のテキストに String.prototype.trim を実行し、
+		// その結果空のテキストノードになった場合、そのテキストノードを削除する。
+		// asis に true を指定すると、この処理をスキップする。
 		if (!asis) {
 			
 			i = -1, l = childNodes.length, this.normalize();
@@ -728,6 +591,8 @@ export class PackNode extends CustomElement {
 			this.replaceChild(packed, text);
 			
 		}
+		
+		//classList.add('packed'),
 		
 		this.emit('packed', this);
 		
@@ -749,5 +614,3 @@ export class PackedNode extends CustomElement {
 	}
 	
 }
-
-defineCustomElements(ComputeNode, EventBridge, IndexedBlock, PackNode, PackedNode);

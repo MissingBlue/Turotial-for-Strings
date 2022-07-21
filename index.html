@@ -78,18 +78,39 @@
 					</event-listener>
 					
 					<disable-input>
+						<!--<s-p>
+							<indexed-block passive>
+								<event-bridge type="computed" emit="index"></event-bridge>
+								<compute-node passive data-compute-contexts="static" data-computed="computed">
+									<event-bridge type="packed" emit="compute"></event-bridge>
+									<pack-node>
+										abc<span>def</span>ghi
+									</pack-node>
+								</compute-node>
+							</indexed-block>
+						</s-p>
+						<s-timeout value="1000"></s-timeout>-->
 						<s-p>
-							時は200X年
+							<pack-node slot="content">時は200X年</pack-node>
 						</s-p>
 						<s-timeout value="1000"></s-timeout>
 						<p data-assign="p">hi</p>
 						<s-p>
-							地球上で起きた最終核戦争により人類の文明は消滅した。
+							<pack-node slot="content">地球上で起きた最終核戦争により人類の文明は消滅した。残された人々は水と食料を求めて争い、被爆を免れた南極を目指して人類の存亡を賭けた最後の移動を開始するのであった。</pack-node>
 						</s-p>
 					</disable-input>
 					
 				</div>
 			</article>
+		</template>
+		
+		<template id="s-p" data-css="default.css">
+			<indexed-block passive>
+				<event-bridge type="computed" emit="index"></event-bridge>
+				<compute-node passive data-compute-contexts="static" data-computed="computed">
+					<slot name="content"></slot>
+				</compute-node>
+			</indexed-block>
 		</template>
 		
 		<template id="s-node" data-css="default.css">

@@ -1,4 +1,5 @@
 import { Chr, Composer, ParseHelper, Pattern, default as strings, Terms } from './strings.js';
+import { ComputeNode, EventBridge, IndexedBlock, PackNode, PackedNode } from './compute/compute.js';
 
 document.getElementById('console-node').content.querySelector('input').value =
 	'hi';
@@ -449,7 +450,7 @@ class AppProxyHandler {
 				case 'string': data[assign] = this.textContent; break;
 				case 'number': data[assign] = +this.textContent; break;
 				case 'boolean': data[assign] = !!this.textContent; break;
-				case 'undefined': data[assign] = void(this.textContent); break;
+				case 'undefined': data[assign] = void this.textContent; break;
 				default:
 				try {
 					
@@ -1780,19 +1781,57 @@ class SP extends CustomElement {
 			
 			this.composeClosest('app-node')?.addLogs(this.cloneNode(true));
 			
+		},
+		slotted() {
+			
+			this.slottedContent.closest('compute-node')?.dispatchEvent?.(new CustomEvent('compute'));
+			//const	{ slottedContent } = this,
+			//		contents = slottedContent.assignedNodes(), l = contents.length;
+			//let i, content;
+			//
+			//i = -1;
+			//while (++i < l) {
+			//	
+			//	if ('spDisabledPack' in (content = contents[i]).dataset  || content instanceof PackNode) continue;
+			//	
+			//	const packer = document.createElement('pack-node');
+			//	
+			//	packer.dataset.spDisabledPack = '',
+			//	packer.slot = 'content',
+			//	packer.append(content.children),
+			//	this.appendChild(packer)
+			//	content.
+			//	
+			//}
+			//
+			//const packer = document.createElement('pack-node');
+			//
+			//packer.dataset.spDisabledPack = '',
+			//packer.slot = 'content',
+			//packer.append(...contents),
+			//this.appendChild(packer);
+			
 		}
 		
 	}
 	
 	static {
 		
-		this.tagName = 's-p';
+		this.tagName = 's-p',
+		
+		this.shadowElement = {
+			
+			slottedContent: 'slot[name="content"]'
+			
+		};
 		
 	}
 	
 	constructor() {
 		
-		super();
+		super(),
+		
+		this.addEvent(this.slottedContent, 'slotchange', this.slotted);
 		
 	}
 	
@@ -3032,6 +3071,8 @@ defineCustomElements(
 	SHandle,
 	STimeout,
 	DisableInput,
+	
+	ComputeNode, EventBridge, IndexedBlock, PackNode, PackedNode,
 	
 	//LogicNode,
 	//LogicEqual,

@@ -453,10 +453,10 @@ class ExtensionNode extends HTMLElement {
 	}
 	
 	q(selector) {
-		return this.shadowRoot.querySelector(selector);
+		return this.shadowRoot?.querySelector?.(selector);
 	}
 	qq(selector) {
-		return this.shadowRoot.querySelectorAll(selector);
+		return this.shadowRoot?.querySelectorAll?.(selector);
 	}
 	querySelectorWhole(selector, root = this) {
 		const inner = Array.from(QQ(selector, root)),
