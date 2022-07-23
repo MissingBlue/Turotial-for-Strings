@@ -3,9 +3,9 @@
 	<head>
 		<meta chatset="utf-8">
 		<title>Tutorial for Strings</title>
-		<link rel="stylesheet" href="default.css">
-		<script src="utils.js"></script>
-		<script type="module" src="main.js"></script>
+		<link rel="stylesheet" href="css/default.css">
+		<script src="js/utils.js"></script>
+		<script type="module" src="js/main.js"></script>
 	</head>
 	<body>
 		
@@ -32,7 +32,7 @@
 			</section>
 		</template>
 		
-		<template id="scene-prologue-0" data-css="default.css">
+		<template id="scene-prologue-0" data-css="css/custom-elements.css">
 			<article slot="data"></article>
 			<article slot="content">
 				<div>
@@ -91,20 +91,24 @@
 						</s-p>
 						<s-timeout value="1000"></s-timeout>-->
 						<s-p>
-							<pack-node slot="content">時は200X年</pack-node>
+							<pack-node slot="content" data-packer="packed-node-content">時は200X年</pack-node>
 						</s-p>
 						<s-timeout value="1000"></s-timeout>
 						<p data-assign="p">hi</p>
 						<s-p>
-							<pack-node slot="content">地球上で起きた最終核戦争により人類の文明は消滅した。残された人々は水と食料を求めて争い、被爆を免れた南極を目指して人類の存亡を賭けた最後の移動を開始するのであった。</pack-node>
+							<pack-node slot="content" data-packer="packed-node-content">地球上で起きた<span class="bold" data-pack-transparent data-indexing="transparent">最終核戦争</span>により人類の文明は消滅した。残された人々は水と食料を求めて争い、被爆を免れた南極を目指して人類の存亡を賭けた最後の移動を開始するのであった。</pack-node>
 						</s-p>
 					</disable-input>
 					
 				</div>
 			</article>
 		</template>
+		<!--coco? 英数字の判定-->
+		<template id="packed-node-content">
+			<packed-node escapes="((?<hira>\p{Script=Hira}+)|(?<kana>\p{Script=Kana}+)|(?<han>\p{Script=Han}+))" escapes-flags="gu"></packed-node>
+		</template>
 		
-		<template id="s-p" data-css="default.css">
+		<template id="s-p" data-css="css/custom-elements.css">
 			<indexed-block passive>
 				<event-bridge type="computed" emit="index"></event-bridge>
 				<compute-node passive data-compute-contexts="static" data-computed="computed">
@@ -113,24 +117,24 @@
 			</indexed-block>
 		</template>
 		
-		<template id="s-node" data-css="default.css">
+		<template id="s-node" data-css="css/custom-elements.css">
 			<slot name="content"></slot>
 		</template>
 		
-		<template id="scenes-node" data-css="default.css">
+		<template id="scenes-node" data-css="css/custom-elements.css">
 			<div>
 			</div>
 		</template>
 		
-		<template id="logs-node" data-css="default.css"><div></div></template>
-		<template id="logs-container" data-css="default.css"><div></div></template>
-		<template id="log-node" data-css="default.css">
+		<template id="logs-node" data-css="css/custom-elements.css"><div></div></template>
+		<template id="logs-container" data-css="css/custom-elements.css"><div></div></template>
+		<template id="log-node" data-css="css/custom-elements.css">
 			
 			<div><slot name="content"></slot></div>
 			
 		</template>
 		
-		<template id="console-node" data-css="default.css">
+		<template id="console-node" data-css="css/custom-elements.css">
 			
 			<div>
 				<div id="input-node">
@@ -138,14 +142,14 @@
 				</div>
 				<div id="control-node">
 					<div id="send-node">
-						<button id="send" type="button">送信</button>
+						<button id="send" type="button">入力</button>
 					</div>
 				</div>
 			</div>
 			
 		</template>
 		
-		<template id="browser-node" data-css="default.css">
+		<template id="browser-node" data-css="css/custom-elements.css">
 			<div>
 				<browser-tabs></browser-tabs>
 				<section id="view">
@@ -153,14 +157,14 @@
 				</section>
 			</div>
 		</template>
-		<template id="browser-tab" data-css="default.css">
+		<template id="browser-tab" data-css="css/custom-elements.css">
 			<div>
 				<slot name="name"></slot>
 				<delete-node></delete-node>
 			</div>
 		</template>
 		
-		<template id="dialog-node" data-css="default.css">
+		<template id="dialog-node" data-css="css/custom-elements.css">
 			<div>
 				<display-node>
 					<measure-box>
@@ -172,17 +176,17 @@
 			</div>
 		</template>
 		
-		<template id="sprite-node" data-css="default.css">
+		<template id="sprite-node" data-css="css/custom-elements.css">
 			<slot name="sprite"></slot>
 		</template>
 		
-		<template id="character-node" data-css="default.css">
+		<template id="character-node" data-css="css/custom-elements.css">
 			<slot name="metadata"></slot>
 			<slot name="conditions"></slot>
 			<slot name="dialogs"></slot>
 		</template>
 		
-		<template id="app-node" data-css="default.css">
+		<template id="app-node" data-css="css/custom-elements.css">
 			
 			<div>
 				<div id="data"></div>
